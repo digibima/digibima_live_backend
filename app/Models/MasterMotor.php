@@ -11,6 +11,6 @@ use Illuminate\Database\Eloquent\Model;
 class MasterMotor extends Model 
 {
     use HasFactory;
-    protected $table = 'master_motor';
+    protected $table = 'master_motor_addons';
     protected $connection = 'mysql_motor';
 }

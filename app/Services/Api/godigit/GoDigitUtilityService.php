@@ -17,7 +17,7 @@ class GoDigitUtilityService
     {
         $curl = curl_init();
         curl_setopt_array($curl, array(
-            CURLOPT_URL => 'https://preprod-oneapi.godigit.com/OneAPI/digit/generateAuthKey',
+            CURLOPT_URL => 'https://oneapi.godigit.com/OneAPI/v1/auth',
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_ENCODING => '',
             CURLOPT_MAXREDIRS => 10,
@@ -50,7 +50,7 @@ class GoDigitUtilityService
         //     "password": "To6nkOaHNx4TImzvEX3"
         $curl = curl_init();
         curl_setopt_array($curl, array(
-            CURLOPT_URL => 'https://preprod-oneapi.godigit.com/OneAPI/digit/generateAuthKey',
+            CURLOPT_URL => 'https://oneapi.godigit.com/OneAPI/digit/generateAuthKey',
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_ENCODING => '',
             CURLOPT_MAXREDIRS => 10,

@@ -43,13 +43,18 @@ class JourneyAuth
             $key = "visitor:$userid";
             if (!Redis::exists($key)) {
                 Redis::setex($key, 86400, 1);
-                Visitor::insert([
-                    'userid' => $userid,
-                    'ip' => $request->ip(),
-                    'user_agent' => $request->userAgent(),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                $isExt = Visitor::where('userid', $userid)->exists();
+                if (!$isExt) {
+                    Visitor::insert([
+                        'userid' => $userid,
+                        'ip' => $request->ip(),
+                        'user_agent' => $request->userAgent(),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                } else {
+                    $isExt->update(['updated_at' => now()]);
+                }
                 Redis::incr('visitor:total');
             }
             return $next($request);

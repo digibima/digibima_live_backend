@@ -4,11 +4,11 @@ namespace App\Models\Master;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Laravel\Scout\Searchable;
+// use Laravel\Scout\Searchable;
 
 class Godigit extends Model
 {
-    use HasFactory, Searchable;
+    use HasFactory;
 
     protected $table = 'godigit_vehicle_master';
     protected $connection = 'mysql_motor';
@@ -18,15 +18,15 @@ class Godigit extends Model
      *
      * @return array
      */
-    public function toSearchableArray()
-    {
-        return [
-            'id' => $this->id,
-            'VID' => $this->VID,
-            'MODEL_DESCRIPTION' => $this->MODEL_DESCRIPTION,
-            'PRODUCT_CODE' => $this->PRODUCT_CODE,
-            'MANUFACTURER' => $this->MANUFACTURER,
-            'VEHICLE_TYPE' => $this->VEHICLE_TYPE,
-        ];
-    }
+    // public function toSearchableArray()
+    // {
+    //     return [
+    //         'id' => $this->id,
+    //         'VID' => $this->VID,
+    //         'MODEL_DESCRIPTION' => $this->MODEL_DESCRIPTION,
+    //         'PRODUCT_CODE' => $this->PRODUCT_CODE,
+    //         'MANUFACTURER' => $this->MANUFACTURER,
+    //         'VEHICLE_TYPE' => $this->VEHICLE_TYPE,
+    //     ];
+    // }
 }

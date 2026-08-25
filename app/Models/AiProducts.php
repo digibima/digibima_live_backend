@@ -5,10 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class HealthJourney extends Model
+class AiProducts extends Model
 {
     use HasFactory;
-    protected $table="health_journey";
-    protected $connection = "mysql_health";
-    
+    protected $table = 'prompt_aiproducts';
+    protected $connection = 'mysql_master';
 }

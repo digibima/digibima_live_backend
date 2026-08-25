@@ -17,12 +17,17 @@ class JourneyUsers extends Model
     // }
 
     protected $fillable = [
-        'id',
-        'name',
-        'email',
-        'mobile',
-        'pincode',
-        'gender',
-        'relation', 
+       'proposalid',
+    'insureid',
+    'name',
+    'age',
+    'dob',
+    'height',
+    'inch',
+    'weight',
+    'relation',
+    'gender',
+    'appointee_name',
+    'appointee_relation'
     ];
 }

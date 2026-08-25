@@ -4,25 +4,21 @@ namespace App\Services\Api\Zuno;
 use stdClass;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\{Auth, Cache};
-use App\Http\Controllers\Api\front\motor\vendor\Zuno\Car\ZunoCarController;
-use App\Http\Controllers\Api\front\motor\vendor\Zuno\Car\ZunoBikeController;
+use App\Http\Controllers\Api\front\motor\vendor\Zuno\Bike\ZunoBikeController;
 use App\Models\{UserMotorDescription};
 use Illuminate\Http\Request;
 
-class ZunoUtilityService
+class ZunoBikeUtilityService
 {
-    private static $username = "ijc3rr25rsu65eha8audvpqeg";
-    private static $password = "1abh34ras5dmjhekjqec7lblact6dokvde9cu9sfm57qiuet35l7";
-    private static $apiKey = "jCe5bdB1ML2Q5vIAPOU8K2hRJvqlLtV23qoHGQlE";
-    private static $payUser = "5id758jbvor4h3jbpo874rj0di";
-    private static $payPassword = "cj1e4ncqlh4a09gdfrm0q9c9p3fifuah11ul92cmpshbjffkfm3";
-    private static $payApiKey = "o6jDdi4DbM8cIgLF9Pc2r2vHrlkKMiO48kJ3tvl9";
-
-    public static function generateToken()
+    private static $username = "5id758jbvor4h3jbpo874rj0di";
+    private static $password = "cj1e4ncqlh4a09gdfrm0q9c9p3fifuah11ul92cmpshbjffkfm3";
+    private static $apiKey = "LrPGqNsTwM12cIH4VEsmB2Ew2i19vBxO1QMfhOfk";
+  
+    public static function BikegenerateToken()
     {
         try {
+
             $basicAuth = base64_encode(self::$username . ':' . self::$password);
-
             $curl = curl_init();
             curl_setopt_array($curl, [
                 CURLOPT_URL => 'https://devapi.hizuno.com/oauth2/token',
@@ -39,9 +35,8 @@ class ZunoUtilityService
                     'Authorization: Basic ' . $basicAuth
                 ]
             ]);
-
+            
             $response = curl_exec($curl);
-
             curl_close($curl);
             return json_decode($response, true);
         } catch (\Exception $e) {
@@ -52,45 +47,45 @@ class ZunoUtilityService
         }
     }
 
-    public static function PayGenerateToken()
-    {
-        try {
-            $basicAuth = base64_encode(self::$payUser . ':' . self::$payPassword);
+    // public static function PayGenerateToken()
+    // {
+    //     try {
+    //         $basicAuth = base64_encode(self::$bikeUser . ':' . self::$bikePassword);
 
-            $curl = curl_init();
-            curl_setopt_array($curl, [
-                CURLOPT_URL => 'https://devapi.hizuno.com/oauth2/token',
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => '',
-                CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 0,
-                CURLOPT_FOLLOWLOCATION => true,
-                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS => '',
-                CURLOPT_HTTPHEADER => [
-                    'Content-Type: application/x-www-form-urlencoded',
-                    'Authorization: Basic ' . $basicAuth
-                ]
-            ]);
+    //         $curl = curl_init();
+    //         curl_setopt_array($curl, [
+    //             CURLOPT_URL => 'https://devapi.hizuno.com/oauth2/token',
+    //             CURLOPT_RETURNTRANSFER => true,
+    //             CURLOPT_ENCODING => '',
+    //             CURLOPT_MAXREDIRS => 10,
+    //             CURLOPT_TIMEOUT => 0,
+    //             CURLOPT_FOLLOWLOCATION => true,
+    //             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+    //             CURLOPT_CUSTOMREQUEST => 'POST',
+    //             CURLOPT_POSTFIELDS => '',
+    //             CURLOPT_HTTPHEADER => [
+    //                 'Content-Type: application/x-www-form-urlencoded',
+    //                 'Authorization: Basic ' . $basicAuth
+    //             ]
+    //         ]);
 
-            $response = curl_exec($curl);
+    //         $response = curl_exec($curl);
 
-            curl_close($curl);
-            return json_decode($response, true);
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => false,
-                'response' => $e->getMessage()
-            ]);
-        }
-    }
+    //         curl_close($curl);
+    //         return json_decode($response, true);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'response' => $e->getMessage()
+    //         ]);
+    //     }
+    // }
 
 
     public static function ekyc()
     {
         try {
-            $getToken = self::generateToken();
+            $getToken = self::BikegenerateToken();
             $token = $getToken['access_token'];
             //return $token;
             $payload = json_encode([
@@ -149,56 +144,56 @@ class ZunoUtilityService
     }
 
 
-    public static function zunoPay(Request $request)
-    {
-        try {
-            $getToken = self::PayGenerateToken();
-            $token = $getToken['access_token'];
+    // public static function zunoPay(Request $request)
+    // {
+    //     try {
+    //         $getToken = self::PayGenerateToken();
+    //         $token = $getToken['access_token'];
 
-            $postFeilds = json_encode([
-                "transactionId" => "NewTESTiui8etnvnnaq44883",
-                "amount" => "3060.34",
-                "customer" => [
-                    "name" => "Sumit Saurabh",
-                    "email" => "sumit.saurabh@hizuno.com",
-                    "mobile" => "8298739585"
-                ],
-                "client" => "DIGIBIMA"
-            ]);
+    //         $postFeilds = json_encode([
+    //             "transactionId" => "NewTESTiui8etnvnnaq44883",
+    //             "amount" => "3060.34",
+    //             "customer" => [
+    //                 "name" => "Sumit Saurabh",
+    //                 "email" => "sumit.saurabh@hizuno.com",
+    //                 "mobile" => "8298739585"
+    //             ],
+    //             "client" => "DIGIBIMA"
+    //         ]);
 
-            $curl = curl_init();
+    //         $curl = curl_init();
 
-            curl_setopt_array($curl, array(
-                CURLOPT_URL => 'https://devapi.hizuno.com/zuno-pay/request-link',
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => '',
-                CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 0,
-                CURLOPT_FOLLOWLOCATION => true,
-                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS => $postFeilds,
-                CURLOPT_HTTPHEADER => array(
-                    'Authorization:' . $token,
-                    'X-Api-Key:' . self::$payApiKey,
-                    'Content-Type: application/json'
-                ),
-            ));
+    //         curl_setopt_array($curl, array(
+    //             CURLOPT_URL => 'https://devapi.hizuno.com/zuno-pay/request-link',
+    //             CURLOPT_RETURNTRANSFER => true,
+    //             CURLOPT_ENCODING => '',
+    //             CURLOPT_MAXREDIRS => 10,
+    //             CURLOPT_TIMEOUT => 0,
+    //             CURLOPT_FOLLOWLOCATION => true,
+    //             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+    //             CURLOPT_CUSTOMREQUEST => 'POST',
+    //             CURLOPT_POSTFIELDS => $postFeilds,
+    //             CURLOPT_HTTPHEADER => array(
+    //                 'Authorization:' . $token,
+    //                 'X-Api-Key:' . self::$payApiKey,
+    //                 'Content-Type: application/json'
+    //             ),
+    //         ));
 
-            $response = curl_exec($curl);
+    //         $response = curl_exec($curl);
 
-            curl_close($curl);
-            return $response;
-        } catch (\Exception $e) {
-            return response()->json(
-                [
-                    'status' => false,
-                    'response' => $e->getMessage()
-                ]
-            );
+    //         curl_close($curl);
+    //         return $response;
+    //     } catch (\Exception $e) {
+    //         return response()->json(
+    //             [
+    //                 'status' => false,
+    //                 'response' => $e->getMessage()
+    //             ]
+    //         );
 
-        }
-    }
+    //     }
+    // }
 
     public static function FileIntoBase64($filePath)
     {
@@ -219,7 +214,7 @@ class ZunoUtilityService
     {
         try {
             $userId = $request->userid;
-            $getToken = self::generateToken();
+            $getToken = self::BikegenerateToken();
             $token = $getToken['access_token'];
             $sDocdetails = UserMotorDescription::where('userid', $userId);
             $aDocument = $sDocdetails->first('document');

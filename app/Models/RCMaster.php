@@ -5,10 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Logins extends Model
+class RCMaster extends Model
 {
     use HasFactory;
-    protected $table = "logins";
-    protected $connection = "sqlite";
+    protected $table = "rc_master";
+    protected $connection = "mysql_master";
 }
-

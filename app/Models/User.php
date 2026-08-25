@@ -9,9 +9,11 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Carbon;
+use Tymon\JWTAuth\Contracts\JWTSubject;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+
+class User extends Authenticatable implements JWTSubject
 {
       use HasApiTokens, Notifiable;
     /**
@@ -22,6 +24,19 @@ class User extends Authenticatable
     protected $connection = "mysql_master";
 
     // Accessor for the email attribute
+
+    public function getJWTIdentifier()
+    {
+        return $this->getKey(); // usually the primary key
+    }
+
+    /**
+     * Return a key value array, containing any custom claims to be added to the JWT.
+     */
+    public function getJWTCustomClaims()
+    {
+        return []; // You can return default claims here if needed
+    }
     public function getMobileAttribute()
     {
         $mobile = $this->attributes['mobile'] ?? null;

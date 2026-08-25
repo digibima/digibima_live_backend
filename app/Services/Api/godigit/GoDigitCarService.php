@@ -630,7 +630,7 @@ class GoDigitCarService
             }
 
             curl_setopt_array($curl, array(
-                CURLOPT_URL => 'https://preprod-oneapi.godigit.com/OneAPI/v1/executor',
+                CURLOPT_URL => 'https://oneapi.godigit.com/OneAPI/v1/executor',
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
@@ -1383,7 +1383,7 @@ class GoDigitCarService
             }
 
             curl_setopt_array($curl, array(
-                CURLOPT_URL => 'https://preprod-oneapi.godigit.com/OneAPI/v1/executor',
+                CURLOPT_URL => 'https://oneapi.godigit.com/OneAPI/v1/executor',
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
@@ -1443,8 +1443,8 @@ class GoDigitCarService
         // 🔹 Dynamic payload
         $payload = [
             'paymentMode' => 'EB',
-            'successReturnUrl' => 'https://uat.digibima.com/motor/car/vendor/godigit/payment/thankyou',
-            'cancelReturnUrl' => 'https://uat.digibima.com/motor/car/vendor/godigit/payment/thankyou',
+            'successReturnUrl' => 'https://insurance.digibima.com/motor/car/vendor/godigit/payment/thankyou',
+            'cancelReturnUrl' => 'https://insurance.digibima.com/motor/car/vendor/godigit/payment/thankyou',
             'applicationId' => $applicationId
         ];
 
@@ -1457,7 +1457,7 @@ class GoDigitCarService
         $curl = curl_init();
 
         curl_setopt_array($curl, [
-            CURLOPT_URL => 'https://preprod-oneapi.godigit.com/OneAPI/v1/executor',
+            CURLOPT_URL => 'https://oneapi.godigit.com/OneAPI/v1/executor',
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_ENCODING => '',
             CURLOPT_MAXREDIRS => 10,
@@ -1519,7 +1519,7 @@ class GoDigitCarService
         }
 
         // 🔹 API URL
-        $url = 'https://preprod-oneapi.godigit.com/OneAPI/v1/executor';
+        $url = 'https://oneapi.godigit.com/OneAPI/v1/executor';
 
         // 🔹 Payload
         $payload = [
@@ -1583,7 +1583,7 @@ class GoDigitCarService
         }
 
         // 🔹 API URL
-        $url = 'https://preprod-oneapi.godigit.com/OneAPI/v1/executor';
+        $url = 'https://oneapi.godigit.com/OneAPI/v1/executor';
 
         // 🔹 Payload
         $payload = [
@@ -1599,7 +1599,7 @@ class GoDigitCarService
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => json_encode($payload),
             CURLOPT_HTTPHEADER => [
-                'integrationId: 22793-0100',
+                'integrationId: 28100-0100',
                 'Content-Type: application/json',
                 'Authorization: Bearer ' . $accessToken,
             ],

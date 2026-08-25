@@ -1,14 +1,13 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\Adityabirla;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class HealthJourney extends Model
+class AdityaBirlaOccupation extends Model
 {
     use HasFactory;
-    protected $table="health_journey";
+    protected $table = "Adityabirla_occupation";
     protected $connection = "mysql_health";
-    
 }

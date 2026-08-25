@@ -1,27 +1,32 @@
 <?php
 namespace App\Services\Api;
-use Carbon\Carbon;
-use Illuminate\Http\Request;
+
+use App\Http\Controllers\Api\front\motor\Vendor\shriram\Bike\ShriramBikeController;
+use App\Http\Controllers\Api\front\motor\Vendor\shriram\Car\ShriramCarController;
 use App\Models\Shriram\{Shriram_Pincode, Shriram_planCheckout, Shriram_RTO_Master, Shriram_Prev_insurence, Shriram_Vehicle_Master};
 use App\Models\{Master_Vehicle_Data as DataModel, MasterAPI, User, MotorJourney, MasterVendor, VendorMotor, MasterMotor, UserMotorDescription, Vehicle_Info, ResponseLog};
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Auth, Cache};
-use App\Http\Controllers\Api\front\motor\Vendor\shriram\Car\ShriramCarController;
-use App\Http\Controllers\Api\front\motor\Vendor\shriram\Bike\ShriramBikeController;
+
 class ShriramService
 {
     private static $Username;
     private static $Password;
+
     public static function initlize()
     {
-        self::$Username = getconstant("MOTOR.SHRIRAM.CREDENTIAL.USERNAME");
-        self::$Password = getconstant("MOTOR.SHRIRAM.CREDENTIAL.PASSWORD");
+        self::$Username = getconstant('MOTOR.SHRIRAM.CREDENTIAL.USERNAME');
+        self::$Password = getconstant('MOTOR.SHRIRAM.CREDENTIAL.PASSWORD');
     }
+
     public static function genRandomNumber()
     {
         $rand = rand(11111, 99999);
         return $rand;
     }
-    public static function generateBikeQuote(Request $request, $today, $nextyear = "", $nPlanType = null, $idv = null)
+
+    public static function generateBikeQuote(Request $request, $today, $nextyear = '', $nPlanType = null, $idv = null)
     {
         try {
             $userId = $request->userid;
@@ -61,25 +66,25 @@ class ShriramService
             $aNewBikedata = json_decode($aData->newbike_reg_details, true) ?? [];
             $PAcover = null;
             $pAcoverReason = null;
-            $sRegNumber = "";
-            $sRegNo2 = "";
-            $sRegNo3 = "";
-            $sRegNo1 = "";
-            $sRegNo4 = "";
+            $sRegNumber = '';
+            $sRegNo2 = '';
+            $sRegNo3 = '';
+            $sRegNo1 = '';
+            $sRegNo4 = '';
             $VehicleType = null;
             $cachemotortype = 'cache_motortype_' . $userId;
             $cachebikePolicyexp = 'cache_bikepolicyexp_' . $userId;
             $PAforUnnamedamount = json_decode($aData->bikeaddonvalue, true);
-            $PAforUnnamedamount = !empty($PAforUnnamedamount) ? $PAforUnnamedamount : "0";
+            $PAforUnnamedamount = !empty($PAforUnnamedamount) ? $PAforUnnamedamount : '0';
             $dRegDate = $aData->knowbike_reg_details ? json_decode($aData->knowbike_reg_details, true)['bikeregdate'] : date('d-m-Y');
             $regDate = \DateTime::createFromFormat('d-m-Y', $dRegDate);
             $addonAgeLimit = [
-                "101" => 4,
-                "103" => 4,
-                "104" => 4,
-                "107" => 12,
-                "109" => 12,
-                "106" => 1
+                '101' => 4,
+                '103' => 4,
+                '104' => 4,
+                '107' => 12,
+                '109' => 12,
+                '106' => 1
             ];
             $aBikeAddon = is_string($aData->bikeaddon)
                 ? json_decode($aData->bikeaddon, true)
@@ -89,12 +94,12 @@ class ShriramService
                 ? $aBikeAddon['tpselectedaddon']
                 : (
                     !empty($aBikeAddon['selectedaddon'])
-                    ? $aBikeAddon['selectedaddon']
-                    : (
-                        !empty($aBikeAddon['odselectedaddon'])
-                        ? $aBikeAddon['odselectedaddon']
-                        : []
-                    )
+                        ? $aBikeAddon['selectedaddon']
+                        : (
+                            !empty($aBikeAddon['odselectedaddon'])
+                                ? $aBikeAddon['odselectedaddon']
+                                : []
+                        )
                 );
             $validAddons = [];
 
@@ -118,102 +123,97 @@ class ShriramService
             if (!empty($aAccessories)) {
                 foreach ($aAccessories as $item) {
                     $aResult[$item['type']] = $item['amount'];
-
                 }
             }
             if (GetCache($cachemotortype) == 'newbike') {
-                if ($aNewBikedata['under'] == "company") {
-                    $PAcover = "0";
-                    $pAcoverReason = "PA_TYPE2";
+                if ($aNewBikedata['under'] == 'company') {
+                    $PAcover = '0';
+                    $pAcoverReason = 'PA_TYPE2';
                 } else {
                     $PAcover = $aData->pacover;
                     if ($PAcover == 0) {
                         $pAcoverReason = json_decode($aData->pacover_reason, true);
                         $ncoverReason = is_array($pAcoverReason) ? (array_keys($pAcoverReason)[0] ?? []) : [];
                         if ($ncoverReason == '1') {
-                            $pAcoverReason = "PA_TYPE1";
+                            $pAcoverReason = 'PA_TYPE1';
                         }
                         if ($ncoverReason == '2') {
-                            $pAcoverReason = "PA_TYPE2";
+                            $pAcoverReason = 'PA_TYPE2';
                         }
                         if ($ncoverReason == '3') {
-                            $pAcoverReason = "PA_TYPE4";
+                            $pAcoverReason = 'PA_TYPE4';
                         } else {
-                            $pAcoverReason = "";
+                            $pAcoverReason = '';
                         }
                     }
                 }
                 $oModel = Shriram_Vehicle_Master::where('id', $aNewBikedata['model'])->first();
                 $sRegNumber = substr(explode('(', $aData->rtocode)[1], 0, -1);
-                $sRegNo1 = substr(str_replace('-', '', $sRegNumber), 0, 2);//k
-                $sRegNo2 = substr(str_replace('-', '', $sRegNumber), 2, 2);//k
+                $sRegNo1 = substr(str_replace('-', '', $sRegNumber), 0, 2);  // k
+                $sRegNo2 = substr(str_replace('-', '', $sRegNumber), 2, 2);  // k
             } else {
-                if ($aBikedata['under'] == "company") {
-                    $PAcover = "0";
-                    $pAcoverReason = "PA_TYPE2";
+                if ($aBikedata['under'] == 'company') {
+                    $PAcover = '0';
+                    $pAcoverReason = 'PA_TYPE2';
                 } else {
                     $PAcover = $aData->pacover;
                     if ($PAcover == 0) {
                         $pAcoverReason = json_decode($aData->pacover_reason, true);
                         $ncoverReason = is_array($pAcoverReason) ? (array_keys($pAcoverReason)[0] ?? []) : [];
                         if ($ncoverReason == '1') {
-                            $pAcoverReason = "PA_TYPE1";
+                            $pAcoverReason = 'PA_TYPE1';
                         }
                         if ($ncoverReason == '2') {
-                            $pAcoverReason = "PA_TYPE2";
+                            $pAcoverReason = 'PA_TYPE2';
                         }
                         if ($ncoverReason == '3') {
-                            $pAcoverReason = "PA_TYPE4";
+                            $pAcoverReason = 'PA_TYPE4';
                         } else {
-                            $pAcoverReason = "";
+                            $pAcoverReason = '';
                         }
                     }
                 }
                 $oModel = Shriram_Vehicle_Master::where('id', $aBikedata['model'])->first();
                 $sRegNumber = $aData->bikenumber;
-                $sRegNo1 = substr($sRegNumber, 0, 2);//k
-                $sRegNo2 = substr($sRegNumber, 2, 2);//k
-                $sRegNo3 = substr($sRegNumber, 4, 2);//k
-                $sRegNo4 = substr($sRegNumber, 6, 4);//k
+                $sRegNo1 = substr($sRegNumber, 0, 2);  // k
+                $sRegNo2 = substr($sRegNumber, 2, 2);  // k
+                $sRegNo3 = substr($sRegNumber, 4, 2);  // k
+                $sRegNo4 = substr($sRegNumber, 6, 4);  // k
             }
             if (GetCache($cachemotortype) == 'knowbike') {
                 if ($aBikedata['prepolitype'] == 'odonly') {
-                    $sPrePolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.OWNDAMAGE");
-                    $sPrevexptoDate = $aBikedata['odtodate']; //k
-                    $sPrevexpfDate = $aBikedata['odfromdate']; //k
+                    $sPrePolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.OWNDAMAGE');
+                    $sPrevexptoDate = $aBikedata['odtodate'];  // k
+                    $sPrevexpfDate = $aBikedata['odfromdate'];  // k
                     $sPretpfDate = $aBikedata['odtpfromdate'];
                     $sPretptoDate = $aBikedata['odtptodate'];
                     $date = Carbon::createFromFormat('d-m-Y', $sPrevexptoDate);
                     $PolicyFromDate = $date->addDay()->format('d-m-Y');
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
-
                 } else if ($aBikedata['prepolitype'] == 'bundled') {
-                    $sPrePolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.BUNDLED");
-                    $sPrevexptoDate = $aBikedata['bdtodate']; //k
-                    $sPrevexpfDate = $aBikedata['bdfromdate']; //k
+                    $sPrePolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.BUNDLED');
+                    $sPrevexptoDate = $aBikedata['bdtodate'];  // k
+                    $sPrevexpfDate = $aBikedata['bdfromdate'];  // k
                     $sPretpfDate = $aBikedata['bdtpfromdate'];
                     $sPretptoDate = $aBikedata['bdtptodate'];
                     $date = Carbon::createFromFormat('d-m-Y', $sPrevexptoDate);
                     $PolicyFromDate = $date->addDay()->format('d-m-Y');
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
-
                 } elseif ($aBikedata['prepolitype'] == 'comprehensive') {
-                    $sPrePolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.PACKAGE");
-                    $sPrevexptoDate = $aBikedata['comptodate']; //k
+                    $sPrePolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.PACKAGE');
+                    $sPrevexptoDate = $aBikedata['comptodate'];  // k
                     $sPrevexpfDate = $aBikedata['compfromdate'];
                     $date = Carbon::createFromFormat('d-m-Y', $sPrevexptoDate);
                     $PolicyFromDate = $date->addDay()->format('d-m-Y');
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
-
                 } elseif ($aBikedata['prepolitype'] == 'tponly') {
-                    $sPrePolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.LIABILITY");
-                    $sPrevexptoDate = $aBikedata['tptodate']; //k
-                    $sPrevexpfDate = $aBikedata['tpfromdate']; //k
+                    $sPrePolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.LIABILITY');
+                    $sPrevexptoDate = $aBikedata['tptodate'];  // k
+                    $sPrevexpfDate = $aBikedata['tpfromdate'];  // k
                     $date = Carbon::createFromFormat('d-m-Y', $sPrevexptoDate);
                     $PolicyFromDate = $date->addDay()->format('d-m-Y');
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
                 }
-
             }
 
             $oJourneyData = MotorJourney::where('userid', $userId)->where('is_bike', '1')->first();
@@ -227,265 +227,263 @@ class ShriramService
                 ];
             }
             $sState = $state->STATE;
-            if (GetCache($cachemotortype) == "knowbike") {
+            if (GetCache($cachemotortype) == 'knowbike') {
                 $firstregdate = array_key_exists('bikeregdate', $aBikedata) ? $aBikedata['bikeregdate'] : '';
                 $claim = array_key_exists('policytoggle', $aBikedata) ? '1' : '0';
                 $claimper = array_key_exists('bonus-button', $aBikedata) ? $aBikedata['bonus-button'] : '0';
                 $transferOfowner = array_key_exists('ownershiptoggle', $aBikedata) ? $aBikedata['ownershiptoggle'] : '0';
                 $oModel = Shriram_Vehicle_Master::where('id', $aBikedata['model'])->first();
             }
-            if (GetCache($cachemotortype) == "newbike") {
+            if (GetCache($cachemotortype) == 'newbike') {
                 $aNewBikedata = json_decode($aData->newbike_reg_details, true);
                 $firstregdate = $today->format('d-m-Y');
                 $oModel = Shriram_Vehicle_Master::where('id', $aNewBikedata['model'])->first();
             }
-            $sVehicleCode = " ";
+            $sVehicleCode = ' ';
             if ($oModel) {
                 $sVehicleCode = $oModel->VEHICLE_CODE;
-
             }
-            $sProdCode = getconstant("MOTOR.SHRIRAM.PRODUCTTYPE.TWOWHEELER");
-            $sPolicyType = "";
-            $sProposalType = "";
-            if (GetCache($cachemotortype) == "newbike") {
-                $VehicleType = "W";
-                $sProposalType = getconstant("MOTOR.SHRIRAM.PROPOSALTYPE.FRESHPROPOSAL");
+            $sProdCode = getconstant('MOTOR.SHRIRAM.PRODUCTTYPE.TWOWHEELER');
+            $sPolicyType = '';
+            $sProposalType = '';
+            if (GetCache($cachemotortype) == 'newbike') {
+                $VehicleType = 'W';
+                $sProposalType = getconstant('MOTOR.SHRIRAM.PROPOSALTYPE.FRESHPROPOSAL');
                 if ($nPlanType == '2') {
-                    $sPolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.BUNDLED");
+                    $sPolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.BUNDLED');
                     $PolicyFromDate = $today->format('d-m-Y');
                     $PolicyToDate = $today->addYears(3)->subDay()->format('d-m-Y');
-                    $NilDepreciationCoverYN = in_array('101', $aAddons) ? "Y" : "N";
-                    $RSACover = in_array('102', $aAddons) ? "Y" : "N";
-                    $DailyExpRemYN = in_array('109', $aAddons) ? "Y" : "N";
-                    $KeyReplacementYN = in_array('111', $aAddons) ? "Y" : "N";
-                    $LossOfPersonBelongYN = in_array('107', $aAddons) ? "Y" : "N";
-                    $Eng_Protector = in_array('104', $aAddons) ? "Y" : "N";
-                    $Consumables = in_array('103', $aAddons) ? "Y" : "N";
-                    $InvReturnYN = in_array('106', $aAddons) ? "Y" : "N";
-                    $AntiTheftYN = in_array('119', $aAddons) ? "1" : "0";
-                    $LLtoPaidDriverYN = in_array('116', $aAddons) ? "1" : "0";
-                    $NoEmpCoverLL = in_array('122', $aAddons) ? "1" : "0";
-                    $SHRIMOTORPROTECTION_YN = in_array('113', $aAddons) ? "Y" : "N";
-                    $LimitedTPPDYN = in_array('121', $aAddons) ? "1" : "0";
-                    $VoluntaryExcess = in_array('120', $aAddons) ? "1" : "0";
+                    $NilDepreciationCoverYN = in_array('101', $aAddons) ? 'Y' : 'N';
+                    $RSACover = in_array('102', $aAddons) ? 'Y' : 'N';
+                    $DailyExpRemYN = in_array('109', $aAddons) ? 'Y' : 'N';
+                    $KeyReplacementYN = in_array('111', $aAddons) ? 'Y' : 'N';
+                    $LossOfPersonBelongYN = in_array('107', $aAddons) ? 'Y' : 'N';
+                    $Eng_Protector = in_array('104', $aAddons) ? 'Y' : 'N';
+                    $Consumables = in_array('103', $aAddons) ? 'Y' : 'N';
+                    $InvReturnYN = in_array('106', $aAddons) ? 'Y' : 'N';
+                    $AntiTheftYN = in_array('119', $aAddons) ? '1' : '0';
+                    $LLtoPaidDriverYN = in_array('116', $aAddons) ? '1' : '0';
+                    $NoEmpCoverLL = in_array('122', $aAddons) ? '1' : '0';
+                    $SHRIMOTORPROTECTION_YN = in_array('113', $aAddons) ? 'Y' : 'N';
+                    $LimitedTPPDYN = in_array('121', $aAddons) ? '1' : '0';
+                    $VoluntaryExcess = in_array('120', $aAddons) ? '1' : '0';
                     $PAPaidDriverConductorCleaner = 1;
-                    $Geographical = in_array('117', $aAddons) ? 1 : "0";
-                    $Geographical = in_array('118', $aAddons) ? 1 : "0";
-                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? "1" : "0";
+                    $Geographical = in_array('117', $aAddons) ? 1 : '0';
+                    $Geographical = in_array('118', $aAddons) ? 1 : '0';
+                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? '1' : '0';
                 }
             }
-            if (GetCache($cachemotortype) == "knowbike") {
-                $VehicleType = "U";
-                $sProposalType = getconstant("MOTOR.SHRIRAM.PROPOSALTYPE.MARKETRENEWAL");
+            if (GetCache($cachemotortype) == 'knowbike') {
+                $VehicleType = 'U';
+                $sProposalType = getconstant('MOTOR.SHRIRAM.PROPOSALTYPE.MARKETRENEWAL');
                 if ($nPlanType == '1') {
-                    $sPolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.OWNDAMAGE");
-                    $NilDepreciationCoverYN = in_array('101', $aAddons) ? "Y" : "N";
-                    $RSACover = in_array('102', $aAddons) ? "Y" : "N";
-                    $DailyExpRemYN = in_array('109', $aAddons) ? "Y" : "N";
-                    $KeyReplacementYN = in_array('111', $aAddons) ? "Y" : "N";
-                    $LossOfPersonBelongYN = in_array('107', $aAddons) ? "Y" : "N";
-                    $Eng_Protector = in_array('104', $aAddons) ? "Y" : "N";
-                    $Consumables = in_array('103', $aAddons) ? "Y" : "N";
-                    $InvReturnYN = in_array('106', $aAddons) ? "Y" : "N";
-                    $AntiTheftYN = in_array('119', $aAddons) ? "1" : "0";
-                    $LLtoPaidDriverYN = in_array('116', $aAddons) ? "1" : "0";
-                    $NoEmpCoverLL = in_array('122', $aAddons) ? "1" : "0";
-                    $SHRIMOTORPROTECTION_YN = in_array('113', $aAddons) ? "Y" : "N";
-                    $LimitedTPPDYN = in_array('121', $aAddons) ? "1" : "0";
-                    $VoluntaryExcess = in_array('120', $aAddons) ? "1" : "0";
+                    $sPolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.OWNDAMAGE');
+                    $NilDepreciationCoverYN = in_array('101', $aAddons) ? 'Y' : 'N';
+                    $RSACover = in_array('102', $aAddons) ? 'Y' : 'N';
+                    $DailyExpRemYN = in_array('109', $aAddons) ? 'Y' : 'N';
+                    $KeyReplacementYN = in_array('111', $aAddons) ? 'Y' : 'N';
+                    $LossOfPersonBelongYN = in_array('107', $aAddons) ? 'Y' : 'N';
+                    $Eng_Protector = in_array('104', $aAddons) ? 'Y' : 'N';
+                    $Consumables = in_array('103', $aAddons) ? 'Y' : 'N';
+                    $InvReturnYN = in_array('106', $aAddons) ? 'Y' : 'N';
+                    $AntiTheftYN = in_array('119', $aAddons) ? '1' : '0';
+                    $LLtoPaidDriverYN = in_array('116', $aAddons) ? '1' : '0';
+                    $NoEmpCoverLL = in_array('122', $aAddons) ? '1' : '0';
+                    $SHRIMOTORPROTECTION_YN = in_array('113', $aAddons) ? 'Y' : 'N';
+                    $LimitedTPPDYN = in_array('121', $aAddons) ? '1' : '0';
+                    $VoluntaryExcess = in_array('120', $aAddons) ? '1' : '0';
                     $PAPaidDriverConductorCleaner = 1;
-                    $Geographical = in_array('117', $aAddons) ? 1 : "0";
-                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? "1" : "0";
+                    $Geographical = in_array('117', $aAddons) ? 1 : '0';
+                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? '1' : '0';
                 }
                 if ($nPlanType == '2') {
-                    $sPolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.PACKAGE");
-                    $RSACover = in_array('102', $aAddons) ? "Y" : "N";
-                    $DailyExpRemYN = in_array('109', $aAddons) ? "Y" : "N";
-                    $KeyReplacementYN = in_array('111', $aAddons) ? "Y" : "N";
-                    $LossOfPersonBelongYN = in_array('107', $aAddons) ? "Y" : "N";
-                    $Eng_Protector = in_array('104', $aAddons) ? "Y" : "N";
-                    $Consumables = in_array('103', $aAddons) ? "Y" : "N";
-                    $InvReturnYN = in_array('106', $aAddons) ? "Y" : "N";
-                    $AntiTheftYN = in_array('119', $aAddons) ? "1" : "0";
-                    $LLtoPaidDriverYN = in_array('116', $aAddons) ? "1" : "0";
-                    $NoEmpCoverLL = in_array('122', $aAddons) ? "1" : "0";
-                    $SHRIMOTORPROTECTION_YN = in_array('113', $aAddons) ? "Y" : "N";
-                    $LimitedTPPDYN = in_array('121', $aAddons) ? "1" : "0";
-                    $VoluntaryExcess = in_array('120', $aAddons) ? "1" : "0";
+                    $sPolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.PACKAGE');
+                    $RSACover = in_array('102', $aAddons) ? 'Y' : 'N';
+                    $DailyExpRemYN = in_array('109', $aAddons) ? 'Y' : 'N';
+                    $KeyReplacementYN = in_array('111', $aAddons) ? 'Y' : 'N';
+                    $LossOfPersonBelongYN = in_array('107', $aAddons) ? 'Y' : 'N';
+                    $Eng_Protector = in_array('104', $aAddons) ? 'Y' : 'N';
+                    $Consumables = in_array('103', $aAddons) ? 'Y' : 'N';
+                    $InvReturnYN = in_array('106', $aAddons) ? 'Y' : 'N';
+                    $AntiTheftYN = in_array('119', $aAddons) ? '1' : '0';
+                    $LLtoPaidDriverYN = in_array('116', $aAddons) ? '1' : '0';
+                    $NoEmpCoverLL = in_array('122', $aAddons) ? '1' : '0';
+                    $SHRIMOTORPROTECTION_YN = in_array('113', $aAddons) ? 'Y' : 'N';
+                    $LimitedTPPDYN = in_array('121', $aAddons) ? '1' : '0';
+                    $VoluntaryExcess = in_array('120', $aAddons) ? '1' : '0';
                     $PAPaidDriverConductorCleaner = 1;
-                    $Geographical = in_array('117', $aAddons) ? 1 : "0";
-                    $Geographical = in_array('118', $aAddons) ? 1 : "0";
-                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? "1" : "0";
+                    $Geographical = in_array('117', $aAddons) ? 1 : '0';
+                    $Geographical = in_array('118', $aAddons) ? 1 : '0';
+                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? '1' : '0';
                 }
-                if ($nPlanType == '3' && (GetCache($cachebikePolicyexp) == "Expired")) {
-                    $sPolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.LIABILITY");
+                if ($nPlanType == '3' && (GetCache($cachebikePolicyexp) == 'Expired')) {
+                    $sPolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.LIABILITY');
                     $PolicyFromDate = $today->format('d-m-Y');
                     $PolicyToDate = $today->addYear()->subDay()->format('d-m-Y');
-                    $LLtoPaidDriverYN = in_array('116', $aAddons) ? "1" : "0";
-                    $NoEmpCoverLL = in_array('122', $aAddons) ? "1" : "0";
-                    $LimitedTPPDYN = in_array('121', $aAddons) ? "1" : "0";
-                    $Geographical = in_array('118', $aAddons) ? 1 : "0";
-                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? "1" : "0";
+                    $LLtoPaidDriverYN = in_array('116', $aAddons) ? '1' : '0';
+                    $NoEmpCoverLL = in_array('122', $aAddons) ? '1' : '0';
+                    $LimitedTPPDYN = in_array('121', $aAddons) ? '1' : '0';
+                    $Geographical = in_array('118', $aAddons) ? 1 : '0';
+                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? '1' : '0';
                 }
-                if ($nPlanType == '3' && (GetCache($cachebikePolicyexp) == "Not Expired")) {
-                    $sPolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.LIABILITY");
-                    $LLtoPaidDriverYN = in_array('116', $aAddons) ? "1" : "0";
-                    $NoEmpCoverLL = in_array('122', $aAddons) ? "1" : "0";
-                    $LimitedTPPDYN = in_array('121', $aAddons) ? "1" : "0";
-                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? "1" : "0";
-                    $Geographical = in_array('118', $aAddons) ? 1 : "0";
+                if ($nPlanType == '3' && (GetCache($cachebikePolicyexp) == 'Not Expired')) {
+                    $sPolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.LIABILITY');
+                    $LLtoPaidDriverYN = in_array('116', $aAddons) ? '1' : '0';
+                    $NoEmpCoverLL = in_array('122', $aAddons) ? '1' : '0';
+                    $LimitedTPPDYN = in_array('121', $aAddons) ? '1' : '0';
+                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? '1' : '0';
+                    $Geographical = in_array('118', $aAddons) ? 1 : '0';
                 }
             }
-
 
             $sRtocity = getBikeRtocityApi($request, $sRegNumber);
             if ($sRtocity) {
                 $sRtocity = $sRtocity->RTOCITY ?? $sRtocity->RTONAME;
             } else {
-                $sRtocity = "";
+                $sRtocity = '';
             }
             $cachebikeidv = 'cache_' . $userId . '_bikeidv';
             $idv = GetCache($cachebikeidv);
-            //$url = MasterAPI::where('apicode', '115')->first()->apistring;
+            // $url = MasterAPI::where('apicode', '115')->first()->apistring;
             $url = 'https://nsecureapi.shriramgi.com/NOVADIGITAL/SVS_Services/PolicyGeneration.svc/RestService/GetQuote';
             $curl = curl_init();
             $jPostField = json_encode([
-                "objPolicyEntryETT" => [
-                    "ReferenceNo" => "",
-                    "ProdCode" => $sProdCode,
-                    "PolicyFromDt" => $PolicyFromDate,
-                    "PolicyToDt" => $PolicyToDate,
-                    "PolicyIssueDt" => $PolicyFromDate,
-                    "InsuredPrefix" => "1",
-                    "InsuredName" => $AuthUser['name'],
-                    "Gender" => $AuthUser['gender'][0] ?? '',
-                    "Address1" => "",
-                    "Address2" => "",
-                    "Address3" => "",
-                    "State" => $sState,
-                    "City" => $sRtocity,
-                    "PinCode" => $AuthUser['pincode'],
-                    "PanNo" => null,
-                    "GSTNo" => null,
-                    "TelephoneNo" => "",
-                    "ProposalType" => $sProposalType,//"FRESH",
-                    "PolicyType" => $sPolicyType,//"MOT-PLT-010",
-                    "DateOfBirth" => "",
-                    "FaxNo" => "",
-                    "POSAgentName" => "",
-                    "POSAgentPanNo" => "",
-                    "CoverNoteNo" => "",
-                    "CoverNoteDt" => "",
-                    "VehicleCode" => $sVehicleCode ?? 'M_21989',
-                    "FirstRegDt" => $firstregdate ?? "",
-                    "VehicleManufactureYear" => "2016",
-                    "VehicleType" => $VehicleType ?? "",
-                    "EngineNo" => "",
-                    "ChassisNo" => "",
-                    "RegNo1" => $sRegNo1,
-                    "RegNo2" => $sRegNo2,
-                    "RegNo3" => $sRegNo3,
-                    "RegNo4" => $sRegNo4,
-                    "RTOCode" => $sRegNo1 . '-' . $sRegNo2,
-                    "IDV_of_Vehicle" => $idv ?? "0",
-                    "Colour" => "",
-                    "VoluntaryExcess" => $VoluntaryExcess ?? "0",
-                    "NoEmpCoverLL" => $NoEmpCoverLL ?? "0",
-                    "NoOfCleaner" => "",
-                    "NoOfDriver" => "0",
-                    "NoOfConductor" => "",
-                    "VehicleMadeinindiaYN" => "",
-                    "VehiclePurposeYN" => "",
-                    "NFPP_Employees" => "",
-                    "NFPP_OthThanEmp" => "",
-                    "LimitOwnPremiseYN" => "",
-                    "PAYEAR" => "1",
-                    "Bangladesh" => ($Geographical == 1) ? "1" : "0",
-                    "Bhutan" => ($Geographical == 1) ? "1" : "0",
-                    "SriLanka" => ($Geographical == 1) ? "1" : "0",
-                    "Nepal" => ($Geographical == 1) ? "1" : "0",
-                    "Pakistan" => ($Geographical == 1) ? "1" : "0",
-                    "Maldives" => ($Geographical == 1) ? "1" : "0",
-                    "CNGKitYN" => array_key_exists('cng', $aResult) ? "Y" : "N",
-                    "CNGKitSI" => array_key_exists('cng', $aResult) ? $aResult['cng'] : '',
-                    "InBuiltCNGKit" => 0,
-                    "LimitedTPPDYN" => $LimitedTPPDYN ?? "0",
-                    "DeTariff" => 0,
-                    "IMT23YN" => "",
-                    "BreakIn" => "No",
-                    "PreInspectionReportYN" => "0",
-                    "PreInspection" => "",
-                    "FitnessCertificateno" => "",
-                    "FitnessValidupto" => "",
-                    "VehPermit" => "",
-                    "PermitNo" => "",
-                    "PAforUnnamedPassengerYN" => $PAforUnnamedPassenger ?? "0",
-                    "PAforUnnamedPassengerSI" => ($PAforUnnamedPassenger == 1) ? $PAforUnnamedamount : "",
-                    "ElectricalaccessYN" => array_key_exists('electrical', $aResult) ? "Y" : "N",
-                    "ElectricalaccessSI" => array_key_exists('electrical', $aResult) ? $aResult['electrical'] : '',
-                    "ElectricalaccessRemarks" => "",
-                    "NonElectricalaccessYN" => array_key_exists('non-electrical', $aResult) ? "Y" : "N",
-                    "NonElectricalaccessSI" => array_key_exists('non-electrical', $aResult) ? $aResult['non-electrical'] : '',
-                    "NonElectricalaccessRemarks" => "",
-                    "PAPaidDriverConductorCleanerYN" => $PAPaidDriverConductorCleaner ?? "1",
-                    "PAPaidDriverConductorCleanerSI" => "0",
-                    "PAPaidDriverCount" => "1",
-                    "PAPaidConductorCount" => "1",
-                    "PAPaidCleanerCount" => "1",
-                    "NomineeNameforPAOwnerDriver" => "",
-                    "NomineeAgeforPAOwnerDriver" => "",
-                    "NomineeRelationforPAOwnerDriver" => "",
-                    "AppointeeNameforPAOwnerDriver" => "",
-                    "AppointeeRelationforPAOwnerDriver" => "",
-                    "LLtoPaidDriverYN" => $LLtoPaidDriverYN ?? "0",
-                    "AntiTheftYN" => $AntiTheftYN ?? "0",
-                    "PreviousPolicyNo" => "",
-                    "PreviousInsurer" => "",
-                    "PreviousPolicyFromDt" => $sPrevexpfDate,
-                    "PreviousPolicyToDt" => $sPrevexptoDate,
-                    "PreviousPolicySI" => "",
-                    "TRANSFEROFOWNER" => $transferOfowner ?? "",
-                    "PreviousPolicyClaimYN" => $claim,
-                    "PreviousPolicyUWYear" => "",
-                    "PreviousPolicyNCBPerc" => $claimper,
-                    "PreviousPolicyType" => $sPrePolicyType ?? "",
-                    "tpPolFmdt" => $sPretpfDate ?? "",
-                    "tpPolTodt" => $sPretptoDate ?? "",
-                    "NilDepreciationCoverYN" => $NilDepreciationCoverYN ?? "0",
-                    "PreviousNilDepreciation" => "0",
-                    "InvReturnYN" => $InvReturnYN ?? "",
-                    "RSACover" => $RSACover ?? "",
-                    "LossOfPersonBelongYN" => $LossOfPersonBelongYN ?? "",
-                    "DailyExpRemYN" => $DailyExpRemYN ?? "",
-                    "KeyReplacementYN" => $KeyReplacementYN ?? "",
-                    "SHRIMOTORPROTECTION_YN" => $SHRIMOTORPROTECTION_YN ?? "",
-                    "HypothecationType" => "",
-                    "HypothecationBankName" => "",
-                    "HypothecationAddress1" => "",
-                    "HypothecationAddress2" => "",
-                    "HypothecationAddress3" => "",
-                    "HypothecationAgreementNo" => "",
-                    "HypothecationCountry" => "",
-                    "HypothecationState" => "",
-                    "HypothecationCity" => "",
-                    "HypothecationPinCode" => "",
-                    "SpecifiedPersonField" => "",
-                    "PAOwnerDriverExclusion" => $PAcover ?? "",
-                    "PAOwnerDriverExReason" => $pAcoverReason ?? "",
-                    "CPAInsComp" => "",
-                    "CPAPolicyFmDt" => "",
-                    "CPAPolicyNo" => "",
-                    "CPAPolicyToDt" => "",
-                    "CPASumInsured" => "",
-                    "Consumables" => $Consumables ?? "",
-                    "Eng_Protector" => $Eng_Protector ?? ""
+                'objPolicyEntryETT' => [
+                    'ReferenceNo' => '',
+                    'ProdCode' => $sProdCode,
+                    'PolicyFromDt' => $PolicyFromDate,
+                    'PolicyToDt' => $PolicyToDate,
+                    'PolicyIssueDt' => $PolicyFromDate,
+                    'InsuredPrefix' => '1',
+                    'InsuredName' => $AuthUser['name'],
+                    'Gender' => $AuthUser['gender'][0] ?? '',
+                    'Address1' => '',
+                    'Address2' => '',
+                    'Address3' => '',
+                    'State' => $sState,
+                    'City' => $sRtocity,
+                    'PinCode' => $AuthUser['pincode'],
+                    'PanNo' => null,
+                    'GSTNo' => null,
+                    'TelephoneNo' => '',
+                    'ProposalType' => $sProposalType,  // "FRESH",
+                    'PolicyType' => $sPolicyType,  // "MOT-PLT-010",
+                    'DateOfBirth' => '',
+                    'FaxNo' => '',
+                    'POSAgentName' => '',
+                    'POSAgentPanNo' => '',
+                    'CoverNoteNo' => '',
+                    'CoverNoteDt' => '',
+                    'VehicleCode' => $sVehicleCode ?? 'M_21989',
+                    'FirstRegDt' => $firstregdate ?? '',
+                    'VehicleManufactureYear' => '2016',
+                    'VehicleType' => $VehicleType ?? '',
+                    'EngineNo' => '',
+                    'ChassisNo' => '',
+                    'RegNo1' => $sRegNo1,
+                    'RegNo2' => $sRegNo2,
+                    'RegNo3' => $sRegNo3,
+                    'RegNo4' => $sRegNo4,
+                    'RTOCode' => $sRegNo1 . '-' . $sRegNo2,
+                    'IDV_of_Vehicle' => $idv ?? '0',
+                    'Colour' => '',
+                    'VoluntaryExcess' => $VoluntaryExcess ?? '0',
+                    'NoEmpCoverLL' => $NoEmpCoverLL ?? '0',
+                    'NoOfCleaner' => '',
+                    'NoOfDriver' => '0',
+                    'NoOfConductor' => '',
+                    'VehicleMadeinindiaYN' => '',
+                    'VehiclePurposeYN' => '',
+                    'NFPP_Employees' => '',
+                    'NFPP_OthThanEmp' => '',
+                    'LimitOwnPremiseYN' => '',
+                    'PAYEAR' => '1',
+                    'Bangladesh' => ($Geographical == 1) ? '1' : '0',
+                    'Bhutan' => ($Geographical == 1) ? '1' : '0',
+                    'SriLanka' => ($Geographical == 1) ? '1' : '0',
+                    'Nepal' => ($Geographical == 1) ? '1' : '0',
+                    'Pakistan' => ($Geographical == 1) ? '1' : '0',
+                    'Maldives' => ($Geographical == 1) ? '1' : '0',
+                    'CNGKitYN' => array_key_exists('cng', $aResult) ? 'Y' : 'N',
+                    'CNGKitSI' => array_key_exists('cng', $aResult) ? $aResult['cng'] : '',
+                    'InBuiltCNGKit' => 0,
+                    'LimitedTPPDYN' => $LimitedTPPDYN ?? '0',
+                    'DeTariff' => 0,
+                    'IMT23YN' => '',
+                    'BreakIn' => 'No',
+                    'PreInspectionReportYN' => '0',
+                    'PreInspection' => '',
+                    'FitnessCertificateno' => '',
+                    'FitnessValidupto' => '',
+                    'VehPermit' => '',
+                    'PermitNo' => '',
+                    'PAforUnnamedPassengerYN' => $PAforUnnamedPassenger ?? '0',
+                    'PAforUnnamedPassengerSI' => ($PAforUnnamedPassenger == 1) ? $PAforUnnamedamount : '',
+                    'ElectricalaccessYN' => array_key_exists('electrical', $aResult) ? 'Y' : 'N',
+                    'ElectricalaccessSI' => array_key_exists('electrical', $aResult) ? $aResult['electrical'] : '',
+                    'ElectricalaccessRemarks' => '',
+                    'NonElectricalaccessYN' => array_key_exists('non-electrical', $aResult) ? 'Y' : 'N',
+                    'NonElectricalaccessSI' => array_key_exists('non-electrical', $aResult) ? $aResult['non-electrical'] : '',
+                    'NonElectricalaccessRemarks' => '',
+                    'PAPaidDriverConductorCleanerYN' => $PAPaidDriverConductorCleaner ?? '1',
+                    'PAPaidDriverConductorCleanerSI' => '0',
+                    'PAPaidDriverCount' => '1',
+                    'PAPaidConductorCount' => '1',
+                    'PAPaidCleanerCount' => '1',
+                    'NomineeNameforPAOwnerDriver' => '',
+                    'NomineeAgeforPAOwnerDriver' => '',
+                    'NomineeRelationforPAOwnerDriver' => '',
+                    'AppointeeNameforPAOwnerDriver' => '',
+                    'AppointeeRelationforPAOwnerDriver' => '',
+                    'LLtoPaidDriverYN' => $LLtoPaidDriverYN ?? '0',
+                    'AntiTheftYN' => $AntiTheftYN ?? '0',
+                    'PreviousPolicyNo' => '',
+                    'PreviousInsurer' => '',
+                    'PreviousPolicyFromDt' => $sPrevexpfDate,
+                    'PreviousPolicyToDt' => $sPrevexptoDate,
+                    'PreviousPolicySI' => '',
+                    'TRANSFEROFOWNER' => $transferOfowner ?? '',
+                    'PreviousPolicyClaimYN' => $claim,
+                    'PreviousPolicyUWYear' => '',
+                    'PreviousPolicyNCBPerc' => $claimper,
+                    'PreviousPolicyType' => $sPrePolicyType ?? '',
+                    'tpPolFmdt' => $sPretpfDate ?? '',
+                    'tpPolTodt' => $sPretptoDate ?? '',
+                    'NilDepreciationCoverYN' => $NilDepreciationCoverYN ?? '0',
+                    'PreviousNilDepreciation' => '0',
+                    'InvReturnYN' => $InvReturnYN ?? '',
+                    'RSACover' => $RSACover ?? '',
+                    'LossOfPersonBelongYN' => $LossOfPersonBelongYN ?? '',
+                    'DailyExpRemYN' => $DailyExpRemYN ?? '',
+                    'KeyReplacementYN' => $KeyReplacementYN ?? '',
+                    'SHRIMOTORPROTECTION_YN' => $SHRIMOTORPROTECTION_YN ?? '',
+                    'HypothecationType' => '',
+                    'HypothecationBankName' => '',
+                    'HypothecationAddress1' => '',
+                    'HypothecationAddress2' => '',
+                    'HypothecationAddress3' => '',
+                    'HypothecationAgreementNo' => '',
+                    'HypothecationCountry' => '',
+                    'HypothecationState' => '',
+                    'HypothecationCity' => '',
+                    'HypothecationPinCode' => '',
+                    'SpecifiedPersonField' => '',
+                    'PAOwnerDriverExclusion' => $PAcover ?? '',
+                    'PAOwnerDriverExReason' => $pAcoverReason ?? '',
+                    'CPAInsComp' => '',
+                    'CPAPolicyFmDt' => '',
+                    'CPAPolicyNo' => '',
+                    'CPAPolicyToDt' => '',
+                    'CPASumInsured' => '',
+                    'Consumables' => $Consumables ?? '',
+                    'Eng_Protector' => $Eng_Protector ?? ''
                 ]
             ]);
 
             // return [
             //    "asd"=>$jPostField
             // ];
-            //dd($jPostField);
+            // dd($jPostField);
             \Log::info(['generateBikeQuote_shriram' => $jPostField]);
 
             curl_setopt_array($curl, array(
@@ -540,16 +538,16 @@ class ShriramService
             $transferOfowner = null;
             $gstno = null;
             $oModel = null;
-            $pAcoverReason = "";
-            $PAcover = "";
+            $pAcoverReason = '';
+            $PAcover = '';
             $nTpolicyNo = null;
             $sTpInsurer = null;
             $prevPolicyNo = null;
             $VehicleType = null;
-            $sRegdate = "";
+            $sRegdate = '';
             $cachebikePolicyexp = 'cache_bikepolicyexp_' . $userId;
             $PAforUnnamedamount = json_decode($aData->bikeaddonvalue, true);
-            $PAforUnnamedamount = !empty($PAforUnnamedamount) ? $PAforUnnamedamount : "0";
+            $PAforUnnamedamount = !empty($PAforUnnamedamount) ? $PAforUnnamedamount : '0';
             $aVehicledetails = json_decode($oJourneyData->vehicle_details, true);
             $aResult = [];
             if (!empty($aAccessories)) {
@@ -562,25 +560,25 @@ class ShriramService
                 $pAcoverReason = json_decode($aData->pacover_reason, true);
                 $ncoverReason = is_array($pAcoverReason) ? (array_keys($pAcoverReason)[0] ?? []) : [];
                 if ($ncoverReason == '1') {
-                    $pAcoverReason = "PA_TYPE1";
+                    $pAcoverReason = 'PA_TYPE1';
                 }
                 if ($ncoverReason == '2') {
-                    $pAcoverReason = "PA_TYPE2";
+                    $pAcoverReason = 'PA_TYPE2';
                 }
                 if ($ncoverReason == '3') {
-                    $pAcoverReason = "PA_TYPE4";
+                    $pAcoverReason = 'PA_TYPE4';
                 }
             } else {
-                $pAcoverReason = "";
+                $pAcoverReason = '';
             }
             $sRegdate = $aBikedata['bikeregdate'] ?? date('d-m-Y');
             $cachemotortype = 'cache_motortype_' . $userId;
             $cacheunder = 'cache_under_' . $userId;
             if (GetCache($cachemotortype) == 'knowbike') {
                 if ($aBikedata['prepolitype'] == 'odonly') {
-                    $sPrePolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.OWNDAMAGE");
-                    $sPrevexptoDate = $aBikedata['odtodate']; //k
-                    $sPrevexpfDate = $aBikedata['odfromdate']; //k
+                    $sPrePolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.OWNDAMAGE');
+                    $sPrevexptoDate = $aBikedata['odtodate'];  // k
+                    $sPrevexpfDate = $aBikedata['odfromdate'];  // k
                     $sPretpfDate = $aBikedata['odtpfromdate'];
                     $sPretptoDate = $aBikedata['odtptodate'];
                     $nTpolicyNo = array_key_exists('tppolicynumber', $prevPolicydata) ? $prevPolicydata['tppolicynumber'] : '';
@@ -589,11 +587,10 @@ class ShriramService
                     $date = Carbon::createFromFormat('d-m-Y', $sPrevexptoDate);
                     $PolicyFromDate = $date->addDay()->format('d-m-Y');
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
-
                 } else if ($aBikedata['prepolitype'] == 'bundled') {
-                    $sPrePolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.BUNDLED");
-                    $sPrevexptoDate = $aBikedata['bdtodate']; //k
-                    $sPrevexpfDate = $aBikedata['bdfromdate']; //k
+                    $sPrePolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.BUNDLED');
+                    $sPrevexptoDate = $aBikedata['bdtodate'];  // k
+                    $sPrevexpfDate = $aBikedata['bdfromdate'];  // k
                     $sPretpfDate = $aBikedata['bdtpfromdate'];
                     $sPretptoDate = $aBikedata['bdtptodate'];
                     $nTpolicyNo = array_key_exists('tppolicynumber', $prevPolicydata) ? $prevPolicydata['tppolicynumber'] : '';
@@ -602,44 +599,41 @@ class ShriramService
                     $date = Carbon::createFromFormat('d-m-Y', $sPrevexptoDate);
                     $PolicyFromDate = $date->addDay()->format('d-m-Y');
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
-
                 } elseif ($aBikedata['prepolitype'] == 'comprehensive') {
-                    $sPrePolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.PACKAGE");
-                    $sPrevexptoDate = $aBikedata['comptodate']; //k
+                    $sPrePolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.PACKAGE');
+                    $sPrevexptoDate = $aBikedata['comptodate'];  // k
                     $sPrevexpfDate = $aBikedata['compfromdate'];
                     $date = Carbon::createFromFormat('d-m-Y', $sPrevexptoDate);
                     $PolicyFromDate = $date->addDay()->format('d-m-Y');
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
-
                 } elseif ($aBikedata['prepolitype'] == 'tponly') {
-                    $sPrePolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.LIABILITY");
-                    $sPrevexptoDate = $aBikedata['tptodate']; //k
-                    $sPrevexpfDate = $aBikedata['tpfromdate']; //k
+                    $sPrePolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.LIABILITY');
+                    $sPrevexptoDate = $aBikedata['tptodate'];  // k
+                    $sPrevexpfDate = $aBikedata['tpfromdate'];  // k
                     $date = Carbon::createFromFormat('d-m-Y', $sPrevexptoDate);
                     $PolicyFromDate = $date->addDay()->format('d-m-Y');
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
                 }
             }
-            $sRegNumber = "";
-            $sRegNo2 = "";
-            $sRegNo3 = "";
-            $sRegNo1 = "";
-            $sRegNo4 = "";
+            $sRegNumber = '';
+            $sRegNo2 = '';
+            $sRegNo3 = '';
+            $sRegNo1 = '';
+            $sRegNo4 = '';
             if (GetCache($cachemotortype) == 'newbike') {
                 $sRegNumber = substr(explode('(', $aData->rtocode)[1], 0, -1);
-                $sRegNo1 = substr(str_replace('-', '', $sRegNumber), 0, 2);//k
-                $sRegNo2 = substr(str_replace('-', '', $sRegNumber), 2, 2);//k
+                $sRegNo1 = substr(str_replace('-', '', $sRegNumber), 0, 2);  // k
+                $sRegNo2 = substr(str_replace('-', '', $sRegNumber), 2, 2);  // k
                 $oModel = Shriram_Vehicle_Master::where('id', $aNewBikedata['model'])->first();
-
             } else {
                 $sRegNumber = $aData->bikenumber;
-                $sRegNo1 = substr($sRegNumber, 0, 2);//k
-                $sRegNo2 = substr($sRegNumber, 2, 2);//k
-                $sRegNo3 = substr($sRegNumber, 4, 2);//k
-                $sRegNo4 = substr($sRegNumber, 6, 4);//k
+                $sRegNo1 = substr($sRegNumber, 0, 2);  // k
+                $sRegNo2 = substr($sRegNumber, 2, 2);  // k
+                $sRegNo3 = substr($sRegNumber, 4, 2);  // k
+                $sRegNo4 = substr($sRegNumber, 6, 4);  // k
                 $oModel = Shriram_Vehicle_Master::where('id', $aBikedata['model'])->first();
             }
-            $sVehicleCode = "";
+            $sVehicleCode = '';
             if ($oModel) {
                 $sVehicleCode = $oModel->VEHICLE_CODE;
             }
@@ -650,7 +644,7 @@ class ShriramService
             $identityPhotoB64 = self::FileIntoBase64($filePath['identity']['identityfront']);
             $addressPhotoB64 = self::FileIntoBase64($filePath['address']['addressfront']);
             self::initlize();
-            //$url = MasterAPI::where('apicode', '116')->first()->apistring;
+            // $url = MasterAPI::where('apicode', '116')->first()->apistring;
             $url = 'https://nsecureapi.shriramgi.com/NOVADIGITAL/SVS_Services/PolicyGeneration.svc/RestService/GenerateProposal';
             $aNominee = $oJourneyData->nominee_details ? jdec($oJourneyData->nominee_details) : [];
             $permanentAddress = json_decode($oJourneyData->permanent_address, true) ?? [];
@@ -661,12 +655,12 @@ class ShriramService
             $dRegDate = $aData->knowbike_reg_details ? json_decode($aData->knowbike_reg_details, true)['bikeregdate'] : date('d-m-Y');
             $regDate = \DateTime::createFromFormat('d-m-Y', $dRegDate);
             $addonAgeLimit = [
-                "101" => 4,
-                "103" => 4,
-                "104" => 4,
-                "107" => 12,
-                "109" => 12,
-                "106" => 1
+                '101' => 4,
+                '103' => 4,
+                '104' => 4,
+                '107' => 12,
+                '109' => 12,
+                '106' => 1
             ];
             $aBikeAddon = is_string($aData->bikeaddon)
                 ? json_decode($aData->bikeaddon, true)
@@ -676,12 +670,12 @@ class ShriramService
                 ? $aBikeAddon['tpselectedaddon']
                 : (
                     !empty($aBikeAddon['selectedaddon'])
-                    ? $aBikeAddon['selectedaddon']
-                    : (
-                        !empty($aBikeAddon['odselectedaddon'])
-                        ? $aBikeAddon['odselectedaddon']
-                        : []
-                    )
+                        ? $aBikeAddon['selectedaddon']
+                        : (
+                            !empty($aBikeAddon['odselectedaddon'])
+                                ? $aBikeAddon['odselectedaddon']
+                                : []
+                        )
                 );
             $validAddons = [];
             foreach ($aAddons as $addonId) {
@@ -699,53 +693,53 @@ class ShriramService
             $cachebikeidv = 'cache_' . $userId . '_bikeidv';
             $nIdv = GetCache($cachebikeidv);
             $randomValue = self::genRandomNumber();
-            $EngineNo = $aVehicledetails['Enginenumber']; //"GDFG59D4GD6546D" . $randomValue;
-            $ChassisNo = $aVehicledetails['Chassisnumber']; //"GDF45GDFGD4G56D" . $randomValue;
-            $sProdCode = getconstant("MOTOR.SHRIRAM.PRODUCTTYPE.TWOWHEELER");
-            $sPolicyType = "";
-            $sProposalType = "";
-            if (GetCache($cachemotortype) == "newbike") {
-                $VehicleType = "W";
-                $sProposalType = getconstant("MOTOR.SHRIRAM.PROPOSALTYPE.FRESHPROPOSAL");
+            $EngineNo = $aVehicledetails['Enginenumber'];  // "GDFG59D4GD6546D" . $randomValue;
+            $ChassisNo = $aVehicledetails['Chassisnumber'];  // "GDF45GDFGD4G56D" . $randomValue;
+            $sProdCode = getconstant('MOTOR.SHRIRAM.PRODUCTTYPE.TWOWHEELER');
+            $sPolicyType = '';
+            $sProposalType = '';
+            if (GetCache($cachemotortype) == 'newbike') {
+                $VehicleType = 'W';
+                $sProposalType = getconstant('MOTOR.SHRIRAM.PROPOSALTYPE.FRESHPROPOSAL');
                 $companydetails = json_decode($oJourneyData->company_details, true);
-                if ($aNewBikedata['under'] == "company") {
+                if ($aNewBikedata['under'] == 'company') {
                     $PAcover = 0;
-                    $pAcoverReason = "PA_TYPE2";
+                    $pAcoverReason = 'PA_TYPE2';
                 } else {
                     $PAcover = $aData->pacover;
                     if ($PAcover == 0) {
                         $pAcoverReason = json_decode($aData->pacover_reason, true);
                         $ncoverReason = is_array($pAcoverReason) ? (array_keys($pAcoverReason)[0] ?? []) : [];
                         if ($ncoverReason == '1') {
-                            $pAcoverReason = "PA_TYPE1";
+                            $pAcoverReason = 'PA_TYPE1';
                         }
                         if ($ncoverReason == '2') {
-                            $pAcoverReason = "PA_TYPE2";
+                            $pAcoverReason = 'PA_TYPE2';
                         }
                         if ($ncoverReason == '3') {
-                            $pAcoverReason = "PA_TYPE4";
+                            $pAcoverReason = 'PA_TYPE4';
                         } else {
-                            $pAcoverReason = "";
+                            $pAcoverReason = '';
                         }
                     }
                 }
                 if ($nPlanType == '2') {
-                    $sPolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.BUNDLED");
+                    $sPolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.BUNDLED');
                     $sRegdate = $today->format('d-m-Y');
                     $PolicyFromDate = $today->format('d-m-Y');
                     $PolicyToDate = $today->addYears(5)->subDay()->format('d-m-Y');
-                    $Geographical = in_array('118', $aAddons) ? 1 : "0";
-                    $Geographical = in_array('117', $aAddons) ? 1 : "0";
-                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? "1" : "0";
+                    $Geographical = in_array('118', $aAddons) ? 1 : '0';
+                    $Geographical = in_array('117', $aAddons) ? 1 : '0';
+                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? '1' : '0';
                 }
             }
-            if (GetCache($cachemotortype) == "knowbike") {
-                $VehicleType = "U";
+            if (GetCache($cachemotortype) == 'knowbike') {
+                $VehicleType = 'U';
                 $prevPolicyNo = $prevPolicydata['policynumber'];
                 $prevInsurCmpny = Shriram_Prev_insurence::where('id', $prevPolicydata['prevInsuranceId'])->first()->insurance;
-                if ($aBikedata['under'] == "company") {
+                if ($aBikedata['under'] == 'company') {
                     $PAcover = 0;
-                    $pAcoverReason = "PA_TYPE2";
+                    $pAcoverReason = 'PA_TYPE2';
                     $companydetails = json_decode($oJourneyData->company_details, true);
                     $gstno = $companydetails['gstnumber'];
                 } else {
@@ -755,15 +749,15 @@ class ShriramService
                         $pAcoverReason = json_decode($aData->pacover_reason, true);
                         $ncoverReason = is_array($pAcoverReason) ? (array_keys($pAcoverReason)[0] ?? []) : [];
                         if ($ncoverReason == '1') {
-                            $pAcoverReason = "PA_TYPE1";
+                            $pAcoverReason = 'PA_TYPE1';
                         }
                         if ($ncoverReason == '2') {
-                            $pAcoverReason = "PA_TYPE2";
+                            $pAcoverReason = 'PA_TYPE2';
                         }
                         if ($ncoverReason == '3') {
-                            $pAcoverReason = "PA_TYPE4";
+                            $pAcoverReason = 'PA_TYPE4';
                         } else {
-                            $pAcoverReason = "";
+                            $pAcoverReason = '';
                         }
                     }
                 }
@@ -771,45 +765,44 @@ class ShriramService
                 $claim = array_key_exists('policytoggle', $aBikedata) ? '1' : '0';
                 $claimper = array_key_exists('bonus-button', $aBikedata) ? $aBikedata['bonus-button'] : '0';
                 $transferOfowner = array_key_exists('ownershiptoggle', $aBikedata) ? $aBikedata['ownershiptoggle'] : '0';
-                $sProposalType = getconstant("MOTOR.SHRIRAM.PROPOSALTYPE.MARKETRENEWAL");
+                $sProposalType = getconstant('MOTOR.SHRIRAM.PROPOSALTYPE.MARKETRENEWAL');
 
                 if ($nPlanType == '1') {
-                    $sPolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.OWNDAMAGE");
-                    $Geographical = in_array('117', $aAddons) ? 1 : "0";
+                    $sPolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.OWNDAMAGE');
+                    $Geographical = in_array('117', $aAddons) ? 1 : '0';
                 }
                 if ($nPlanType == '2') {
-                    $sPolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.PACKAGE");
-                    $Geographical = in_array('117', $aAddons) ? 1 : "0";
-                    $Geographical = in_array('118', $aAddons) ? 1 : "0";
-                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? "1" : "0";
+                    $sPolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.PACKAGE');
+                    $Geographical = in_array('117', $aAddons) ? 1 : '0';
+                    $Geographical = in_array('118', $aAddons) ? 1 : '0';
+                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? '1' : '0';
                 }
-                if ($nPlanType == '3' && (GetCache($cachebikePolicyexp) == "Not Expired")) {
-                    $sPolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.LIABILITY");
-                    $Geographical = in_array('118', $aAddons) ? 1 : "0";
-                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? "1" : "0";
+                if ($nPlanType == '3' && (GetCache($cachebikePolicyexp) == 'Not Expired')) {
+                    $sPolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.LIABILITY');
+                    $Geographical = in_array('118', $aAddons) ? 1 : '0';
+                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? '1' : '0';
                 }
-                if ($nPlanType == '3' && (GetCache($cachebikePolicyexp) == "Expired")) {
-                    $sPolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.LIABILITY");
+                if ($nPlanType == '3' && (GetCache($cachebikePolicyexp) == 'Expired')) {
+                    $sPolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.LIABILITY');
                     $PolicyFromDate = $today->format('d-m-Y');
                     $PolicyToDate = $today->addYear()->subDay()->format('d-m-Y');
-                    $Geographical = in_array('118', $aAddons) ? 1 : "0";
-                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? "1" : "0";
+                    $Geographical = in_array('118', $aAddons) ? 1 : '0';
+                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? '1' : '0';
                 }
-
             }
 
             $sRtocity = getBikeRtocity($sRegNumber);
             if ($sRtocity) {
                 $sRtocity = !empty($sRtocity->RTOCITY) ? $sRtocity->RTOCITY : $sRtocity->RTONAME;
             } else {
-                $sRtocity = "";
+                $sRtocity = '';
             }
             $user = User::find($userId);
             $dob = !empty($oJourneyData->dob)
                 ? $oJourneyData->dob
                 : (!empty($user->dob)
                     ? $user->dob
-                    : "29-04-2000");
+                    : '29-04-2000');
 
             $cacheproductcode = 'cache_productcode_' . $userId;
             SetCache($cacheproductcode, $sProdCode);
@@ -823,168 +816,168 @@ class ShriramService
             $curl = curl_init();
             $randomValue = self::genRandomNumber();
             $postdata = json_encode([
-                "objPolicyEntryETT" => [
-                    "ReferenceNo" => "123456",
-                    "ProdCode" => $sProdCode,
-                    "PolicyFromDt" => $PolicyFromDate ?? "",
-                    "PolicyToDt" => $PolicyToDate ?? "",
-                    "PolicyIssueDt" => $PolicyFromDate ?? "",
-                    "InsuredPrefix" => "1",
-                    "InsuredName" => $AuthUser['name'] ?? $AuthUser['name'],
-                    "Gender" => $AuthUser['gender'][0] ?? 'M',
-                    "Address1" => $permanentAddress['address1'] ?? "",
-                    "Address2" => $permanentAddress['address2'] ?? "",
-                    "Address3" => $permanentAddress['landmark'] ?? "",
-                    "State" => $sState ?? "",
-                    "City" => $permanentAddress['city'] ?? "",
-                    "PinCode" => $pincode ?? $permanentAddress['pincode'],
-                    "PanNo" => "",
-                    "GSTNo" => $gstno,
-                    "TelephoneNo" => "",
-                    "ProposalType" => $sProposalType ?? "",
-                    "PolicyType" => $sPolicyType ?? "",
-                    "DateOfBirth" => Carbon::createFromFormat('d-m-Y', $dob)->format('Y-m-d') ?? "12-08-1998",
-                    "MobileNo" => $AuthUser['mobile'] ?? "",
-                    "FaxNo" => "",
-                    "EmailID" => $AuthUser['email'] ?? '',
-                    "POSAgentName" => "NANDITA TIWARI",
-                    "POSAgentPanNo" => "BTYPB4567K",
-                    "CoverNoteNo" => "",
-                    "CoverNoteDt" => "",
-                    "VehicleCode" => $sVehicleCode ?? "UL8066",
-                    "FirstRegDt" => $sRegdate ?? "",
-                    "VehicleType" => $VehicleType ?? "",
-                    "EngineNo" => $EngineNo ?? "",
-                    "ChassisNo" => $ChassisNo ?? "",
-                    "RegNo1" => $sRegNo1 ?? "",
-                    "RegNo2" => $sRegNo2 ?? "",
-                    "RegNo3" => $sRegNo3 ?? "",
-                    "RegNo4" => $sRegNo4 ?? "",
-                    "RTOCode" => $sRegNo1 ?? "" . '-' . $sRegNo2 ?? "",
-                    "IDV_of_Vehicle" => $nIdv ?? "",
-                    "Colour" => "",
-                    "VoluntaryExcess" => in_array('120', $aAddons) ? "1" : "0",
-                    "NoEmpCoverLL" => in_array('122', $aAddons) ? "1" : "0",
-                    "NoOfCleaner" => "",
-                    "NoOfDriver" => "0",
-                    "NoOfConductor" => "",
-                    "VehicleMadeinindiaYN" => "N",
-                    "VehiclePurposeYN" => "",
-                    "NFPP_Employees" => "",
-                    "NFPP_OthThanEmp" => "",
-                    "LimitOwnPremiseYN" => "N",
-                    "Bangladesh" => ($Geographical == 1) ? "1" : "0",
-                    "Bhutan" => ($Geographical == 1) ? "1" : "0",
-                    "SriLanka" => ($Geographical == 1) ? "1" : "0",
-                    "Nepal" => ($Geographical == 1) ? "1" : "0",
-                    "Pakistan" => ($Geographical == 1) ? "1" : "0",
-                    "Maldives" => ($Geographical == 1) ? "1" : "0",
-                    "CNGKitYN" => array_key_exists('cng', $aResult) ? "Y" : "N",
-                    "CNGKitSI" => array_key_exists('cng', $aResult) ? $aResult['cng'] : '',
-                    "InBuiltCNGKit" => "0",
-                    "LimitedTPPDYN" => in_array('121', $aAddons) ? "1" : "0",
-                    "DeTariff" => 0,
-                    "IMT23YN" => "",
-                    "BreakIn" => "NO",
-                    "PreInspectionReportYN" => "0",
-                    "PreInspection" => "",
-                    "FitnessCertificateno" => "",
-                    "FitnessValidupto" => "",
-                    "VehPermit" => "",
-                    "PermitNo" => "",
-                    "PAforUnnamedPassengerYN" => $PAforUnnamedPassenger ?? "0",
-                    "PAforUnnamedPassengerSI" => ($PAforUnnamedPassenger == 1) ? $PAforUnnamedamount : "0",
-                    "ElectricalaccessYN" => array_key_exists('electrical', $aResult) ? "Y" : "N",
-                    "ElectricalaccessSI" => array_key_exists('electrical', $aResult) ? $aResult['electrical'] : '',
-                    "ElectricalaccessRemarks" => "",
-                    "NonElectricalaccessYN" => array_key_exists('non-electrical', $aResult) ? "Y" : "N",
-                    "NonElectricalaccessSI" => array_key_exists('non-electrical', $aResult) ? $aResult['non-electrical'] : '',
-                    "NonElectricalaccessRemarks" => "",
-                    "PAPaidDriverConductorCleanerYN" => 0,
-                    "PAPaidDriverConductorCleanerSI" => 0,
-                    "PAPaidDriverCount" => "0",
-                    "PAPaidConductorCount" => "",
-                    "PAPaidCleanerCount" => "",
-                    "NomineeNameforPAOwnerDriver" => $aNominee['nomineename'] ?? "unknown",
-                    "NomineeAgeforPAOwnerDriver" => $aNominee['nomineedob'] ? date('Y') - (int) last(explode('-', $aNominee['nomineedob'])) : '28',
-                    "NomineeRelationforPAOwnerDriver" => $aNominee['nomineerelation'] ?? "BROTHER",
-                    "AppointeeNameforPAOwnerDriver" => $aNominee['appointeename'] ?? "",
-                    "AppointeeRelationforPAOwnerDriver" => $aNominee['appointeerelation'] ?? "",
-                    "LLtoPaidDriverYN" => in_array('116', $aAddons) ? "1" : "0",
-                    "AntiTheftYN" => in_array('119', $aAddons) ? "1" : "0",
-                    "PreviousPolicyNo" => $prevPolicyNo ?? "",
-                    "PreviousInsurer" => $prevInsurCmpny ?? "",
-                    "PreviousPolicyFromDt" => $sPrevexpfDate ?? "",
-                    "PreviousPolicyToDt" => $sPrevexptoDate ?? "",
-                    "PreviousPolicySI" => "",
-                    "PreviousPolicyClaimYN" => $claim ?? "",
-                    "PreviousPolicyUWYear" => "",
-                    "PreviousPolicyNCBPerc" => $claimper ?? "",
-                    "TRANSFEROFOWNER" => $transferOfowner ?? "",
-                    "PreviousPolicyType" => $sPrePolicyType ?? "",
-                    "AddonPackage" => "",
-                    "NilDepreciationCoverYN" => in_array('101', $aAddons) ? "Y" : "N",
-                    "PreviousNilDepreciation" => in_array('101', $aAddons) ? "1" : "0",
-                    "HypothecationType" => array_key_exists('bankloantype', $HypothData) ? $HypothData['bankloantype'] : '',
-                    "HypothecationBankName" => "",
-                    "HypothecationAddress1" => "",
-                    "HypothecationAddress2" => "",
-                    "HypothecationAddress3" => "",
-                    "HypothecationAgreementNo" => "",
-                    "HypothecationCountry" => "INDIA",
-                    "HypothecationState" => "",
-                    "HypothecationCity" => "",
-                    "HypothecationPinCode" => "",
-                    "SpecifiedPersonField" => "",
-                    "PAOwnerDriverExclusion" => $PAcover ?? "0",
-                    "PAOwnerDriverExReason" => $pAcoverReason ?? "",
-                    "CPAInsComp" => "",
-                    "CPAPolicyFmDt" => "",
-                    "CPAPolicyNo" => "",
-                    "CPAPolicyToDt" => "",
-                    "CPASumInsured" => "",
-                    "LossOfPersonBelongYN" => in_array('107', $aAddons) ? "Y" : "N",
-                    "DailyExpRemYN" => in_array('109', $aAddons) ? "Y" : "N",
-                    "RSACover" => in_array('102', $aAddons) ? "Y" : "N",
-                    "InvReturnYN" => in_array('106', $aAddons) ? "Y" : "N",
-                    "Eng_Protector" => in_array('104', $aAddons) ? "Y" : "N",
-                    "Consumables" => in_array('103', $aAddons) ? "Y" : "N",
-                    "KeyReplacementYN" => in_array('111', $aAddons) ? "Y" : "N",
-                    "SHRIMOTORPROTECTION_YN" => in_array('113', $aAddons) ? "Y" : "N",
-                    "tpPolAddr" => $sRtocity ?? "Jaipur",
-                    "tpPolComp" => $tpInsurCmpny ?? "",
-                    "tpPolFmdt" => $sPretpfDate ?? "",
-                    "tpPolNo" => $nTpolicyNo ?? '',
-                    "tpPolTodt" => $sPretptoDate ?? "",
-                    "CKYC_NO" => "",
-                    "DOB" => $dob ?? "",
-                    "POI_Type" => "PAN",
-                    "POI_ID" => "AVSPV4566D",
-                    "POA_Type" => "PROOF OF POSSESSION OF AADHAR",
-                    "POA_ID" => "5380",
-                    "FatherName" => $aIdDetails['fathername'] ?? '',
-                    "MotherName" => "",
-                    "MaritalStatus" => "",
-                    "SpouseName" => "",
-                    "ResidentialStatus" => "",
-                    "PHYSICALPOLICY" => $aNominee['physicalpolicy'] ?? "0",
-                    "POI_DocumentFile" => $identityPhotoB64['based64'],
-                    "POA_DocumentFile" => $addressPhotoB64['based64'],
-                    "Insured_photo" => $insurePhotoB64['based64'],
-                    "POI_DocumentExt" => $identityPhotoB64['extension'],
-                    "POA_DocumentExt" => $addressPhotoB64['extension'],
-                    "Insured_photoExt" => $insurePhotoB64['extension'],
-                    "PANorForm60" => "PAN",
-                    "PanNo" => "AVSPV4566D",
-                    "Pan_Form60_Document" => $identityPhotoB64['based64'],
-                    "Pan_Form60_Document_Ext" => $identityPhotoB64['extension'],
-                    "Pan_Form60_Document_Name" => "1"
+                'objPolicyEntryETT' => [
+                    'ReferenceNo' => '123456',
+                    'ProdCode' => $sProdCode,
+                    'PolicyFromDt' => $PolicyFromDate ?? '',
+                    'PolicyToDt' => $PolicyToDate ?? '',
+                    'PolicyIssueDt' => $PolicyFromDate ?? '',
+                    'InsuredPrefix' => '1',
+                    'InsuredName' => $AuthUser['name'] ?? $AuthUser['name'],
+                    'Gender' => $AuthUser['gender'][0] ?? 'M',
+                    'Address1' => $permanentAddress['address1'] ?? '',
+                    'Address2' => $permanentAddress['address2'] ?? '',
+                    'Address3' => $permanentAddress['landmark'] ?? '',
+                    'State' => $sState ?? '',
+                    'City' => $permanentAddress['city'] ?? '',
+                    'PinCode' => $pincode ?? $permanentAddress['pincode'],
+                    'PanNo' => '',
+                    'GSTNo' => $gstno,
+                    'TelephoneNo' => '',
+                    'ProposalType' => $sProposalType ?? '',
+                    'PolicyType' => $sPolicyType ?? '',
+                    'DateOfBirth' => Carbon::createFromFormat('d-m-Y', $dob)->format('Y-m-d') ?? '12-08-1998',
+                    'MobileNo' => $AuthUser['mobile'] ?? '',
+                    'FaxNo' => '',
+                    'EmailID' => $AuthUser['email'] ?? '',
+                    'POSAgentName' => 'NANDITA TIWARI',
+                    'POSAgentPanNo' => 'BTYPB4567K',
+                    'CoverNoteNo' => '',
+                    'CoverNoteDt' => '',
+                    'VehicleCode' => $sVehicleCode ?? 'UL8066',
+                    'FirstRegDt' => $sRegdate ?? '',
+                    'VehicleType' => $VehicleType ?? '',
+                    'EngineNo' => $EngineNo ?? '',
+                    'ChassisNo' => $ChassisNo ?? '',
+                    'RegNo1' => $sRegNo1 ?? '',
+                    'RegNo2' => $sRegNo2 ?? '',
+                    'RegNo3' => $sRegNo3 ?? '',
+                    'RegNo4' => $sRegNo4 ?? '',
+                    'RTOCode' => $sRegNo1 ?? '' . '-' . $sRegNo2 ?? '',
+                    'IDV_of_Vehicle' => $nIdv ?? '',
+                    'Colour' => '',
+                    'VoluntaryExcess' => in_array('120', $aAddons) ? '1' : '0',
+                    'NoEmpCoverLL' => in_array('122', $aAddons) ? '1' : '0',
+                    'NoOfCleaner' => '',
+                    'NoOfDriver' => '0',
+                    'NoOfConductor' => '',
+                    'VehicleMadeinindiaYN' => 'N',
+                    'VehiclePurposeYN' => '',
+                    'NFPP_Employees' => '',
+                    'NFPP_OthThanEmp' => '',
+                    'LimitOwnPremiseYN' => 'N',
+                    'Bangladesh' => ($Geographical == 1) ? '1' : '0',
+                    'Bhutan' => ($Geographical == 1) ? '1' : '0',
+                    'SriLanka' => ($Geographical == 1) ? '1' : '0',
+                    'Nepal' => ($Geographical == 1) ? '1' : '0',
+                    'Pakistan' => ($Geographical == 1) ? '1' : '0',
+                    'Maldives' => ($Geographical == 1) ? '1' : '0',
+                    'CNGKitYN' => array_key_exists('cng', $aResult) ? 'Y' : 'N',
+                    'CNGKitSI' => array_key_exists('cng', $aResult) ? $aResult['cng'] : '',
+                    'InBuiltCNGKit' => '0',
+                    'LimitedTPPDYN' => in_array('121', $aAddons) ? '1' : '0',
+                    'DeTariff' => 0,
+                    'IMT23YN' => '',
+                    'BreakIn' => 'NO',
+                    'PreInspectionReportYN' => '0',
+                    'PreInspection' => '',
+                    'FitnessCertificateno' => '',
+                    'FitnessValidupto' => '',
+                    'VehPermit' => '',
+                    'PermitNo' => '',
+                    'PAforUnnamedPassengerYN' => $PAforUnnamedPassenger ?? '0',
+                    'PAforUnnamedPassengerSI' => ($PAforUnnamedPassenger == 1) ? $PAforUnnamedamount : '0',
+                    'ElectricalaccessYN' => array_key_exists('electrical', $aResult) ? 'Y' : 'N',
+                    'ElectricalaccessSI' => array_key_exists('electrical', $aResult) ? $aResult['electrical'] : '',
+                    'ElectricalaccessRemarks' => '',
+                    'NonElectricalaccessYN' => array_key_exists('non-electrical', $aResult) ? 'Y' : 'N',
+                    'NonElectricalaccessSI' => array_key_exists('non-electrical', $aResult) ? $aResult['non-electrical'] : '',
+                    'NonElectricalaccessRemarks' => '',
+                    'PAPaidDriverConductorCleanerYN' => 0,
+                    'PAPaidDriverConductorCleanerSI' => 0,
+                    'PAPaidDriverCount' => '0',
+                    'PAPaidConductorCount' => '',
+                    'PAPaidCleanerCount' => '',
+                    'NomineeNameforPAOwnerDriver' => $aNominee['nomineename'] ?? 'unknown',
+                    'NomineeAgeforPAOwnerDriver' => $aNominee['nomineedob'] ? date('Y') - (int) last(explode('-', $aNominee['nomineedob'])) : '28',
+                    'NomineeRelationforPAOwnerDriver' => $aNominee['nomineerelation'] ?? 'BROTHER',
+                    'AppointeeNameforPAOwnerDriver' => $aNominee['appointeename'] ?? '',
+                    'AppointeeRelationforPAOwnerDriver' => $aNominee['appointeerelation'] ?? '',
+                    'LLtoPaidDriverYN' => in_array('116', $aAddons) ? '1' : '0',
+                    'AntiTheftYN' => in_array('119', $aAddons) ? '1' : '0',
+                    'PreviousPolicyNo' => $prevPolicyNo ?? '',
+                    'PreviousInsurer' => $prevInsurCmpny ?? '',
+                    'PreviousPolicyFromDt' => $sPrevexpfDate ?? '',
+                    'PreviousPolicyToDt' => $sPrevexptoDate ?? '',
+                    'PreviousPolicySI' => '',
+                    'PreviousPolicyClaimYN' => $claim ?? '',
+                    'PreviousPolicyUWYear' => '',
+                    'PreviousPolicyNCBPerc' => $claimper ?? '',
+                    'TRANSFEROFOWNER' => $transferOfowner ?? '',
+                    'PreviousPolicyType' => $sPrePolicyType ?? '',
+                    'AddonPackage' => '',
+                    'NilDepreciationCoverYN' => in_array('101', $aAddons) ? 'Y' : 'N',
+                    'PreviousNilDepreciation' => in_array('101', $aAddons) ? '1' : '0',
+                    'HypothecationType' => array_key_exists('bankloantype', $HypothData) ? $HypothData['bankloantype'] : '',
+                    'HypothecationBankName' => '',
+                    'HypothecationAddress1' => '',
+                    'HypothecationAddress2' => '',
+                    'HypothecationAddress3' => '',
+                    'HypothecationAgreementNo' => '',
+                    'HypothecationCountry' => 'INDIA',
+                    'HypothecationState' => '',
+                    'HypothecationCity' => '',
+                    'HypothecationPinCode' => '',
+                    'SpecifiedPersonField' => '',
+                    'PAOwnerDriverExclusion' => $PAcover ?? '0',
+                    'PAOwnerDriverExReason' => $pAcoverReason ?? '',
+                    'CPAInsComp' => '',
+                    'CPAPolicyFmDt' => '',
+                    'CPAPolicyNo' => '',
+                    'CPAPolicyToDt' => '',
+                    'CPASumInsured' => '',
+                    'LossOfPersonBelongYN' => in_array('107', $aAddons) ? 'Y' : 'N',
+                    'DailyExpRemYN' => in_array('109', $aAddons) ? 'Y' : 'N',
+                    'RSACover' => in_array('102', $aAddons) ? 'Y' : 'N',
+                    'InvReturnYN' => in_array('106', $aAddons) ? 'Y' : 'N',
+                    'Eng_Protector' => in_array('104', $aAddons) ? 'Y' : 'N',
+                    'Consumables' => in_array('103', $aAddons) ? 'Y' : 'N',
+                    'KeyReplacementYN' => in_array('111', $aAddons) ? 'Y' : 'N',
+                    'SHRIMOTORPROTECTION_YN' => in_array('113', $aAddons) ? 'Y' : 'N',
+                    'tpPolAddr' => $sRtocity ?? 'Jaipur',
+                    'tpPolComp' => $tpInsurCmpny ?? '',
+                    'tpPolFmdt' => $sPretpfDate ?? '',
+                    'tpPolNo' => $nTpolicyNo ?? '',
+                    'tpPolTodt' => $sPretptoDate ?? '',
+                    'CKYC_NO' => '',
+                    'DOB' => $dob ?? '',
+                    'POI_Type' => 'PAN',
+                    'POI_ID' => 'AVSPV4566D',
+                    'POA_Type' => 'PROOF OF POSSESSION OF AADHAR',
+                    'POA_ID' => '5380',
+                    'FatherName' => $aIdDetails['fathername'] ?? '',
+                    'MotherName' => '',
+                    'MaritalStatus' => '',
+                    'SpouseName' => '',
+                    'ResidentialStatus' => '',
+                    'PHYSICALPOLICY' => $aNominee['physicalpolicy'] ?? '0',
+                    'POI_DocumentFile' => $identityPhotoB64['based64'],
+                    'POA_DocumentFile' => $addressPhotoB64['based64'],
+                    'Insured_photo' => $insurePhotoB64['based64'],
+                    'POI_DocumentExt' => $identityPhotoB64['extension'],
+                    'POA_DocumentExt' => $addressPhotoB64['extension'],
+                    'Insured_photoExt' => $insurePhotoB64['extension'],
+                    'PANorForm60' => 'PAN',
+                    'PanNo' => 'AVSPV4566D',
+                    'Pan_Form60_Document' => $identityPhotoB64['based64'],
+                    'Pan_Form60_Document_Ext' => $identityPhotoB64['extension'],
+                    'Pan_Form60_Document_Name' => '1'
                 ]
             ]);
             // return[
             //     "reee"=>$postdata
             // ];
-            //dd($postdata);  
+            // dd($postdata);
             \Log::info(['generateBikeProposal_shriram' => $postdata]);
             curl_setopt_array($curl, array(
                 CURLOPT_URL => $url,
@@ -997,15 +990,15 @@ class ShriramService
                 CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => $postdata,
                 CURLOPT_HTTPHEADER => array(
-                    'Username: ' . self::$Username, // Correct format
-                    'Password: ' . self::$Password, // Correct format
+                    'Username: ' . self::$Username,  // Correct format
+                    'Password: ' . self::$Password,  // Correct format
                     'Content-Type: application/json',
                     'Accept: application/json',
                     'Cookie: ASP.NET_SessionId=3h5sofst43z4xtc5kse54rjy'
                 ),
             ));
             $response = curl_exec($curl);
-            Logfunction($userId, "shriram", $response, $postdata, "bike");
+            Logfunction($userId, 'shriram', $response, $postdata, 'bike');
             \Log::info(['generateBikeProposal_shriram' => $response]);
 
             curl_close($curl);
@@ -1013,10 +1006,9 @@ class ShriramService
         } catch (\Exception $e) {
             return $e->getMessage() . 'errorcode:privateBikeProposal';
         }
-
     }
 
-    public static function generatePrivateCarQuote(Request $request, $today, $nextyear = "", $nPlanType = null, $idv = null)
+    public static function generatePrivateCarQuote(Request $request, $today, $nextyear = '', $nPlanType = null, $idv = null)
     {
         try {
             $userId = $request->userid;
@@ -1058,12 +1050,12 @@ class ShriramService
             $PAcover = null;
             $pAcoverReason = null;
             $VehicleType = null;
-            $under = "";
+            $under = '';
             $AuthUser = $user->toArray();
             $oJourneyData = MotorJourney::where('userid', $userId)->where('is_car', '1')->first();
             $aData = DataModel::where('userid', $userId)->first();
             $PAforUnnamedamount = json_decode($aData->caraddonvalue, true);
-            $PAforUnnamedamount = !empty($PAforUnnamedamount) ? $PAforUnnamedamount : "0";
+            $PAforUnnamedamount = !empty($PAforUnnamedamount) ? $PAforUnnamedamount : '0';
             $aAccessories = json_decode($aData->accessories, true);
             $aCardata = json_decode($aData->knowcar_reg_details, true) ?? [];
             $claim = array_key_exists('policytoggle', $aCardata) ? '0' : '1';
@@ -1072,15 +1064,15 @@ class ShriramService
             $dRegDate = $aData->knowcar_reg_details ? json_decode($aData->knowcar_reg_details, true)['carregdate'] : date('d-m-Y');
             $regDate = \DateTime::createFromFormat('d-m-Y', $dRegDate);
             $addonAgeLimit = [
-                "101" => 5,
-                "103" => 5,
-                "104" => 5,
-                "107" => 5,
-                "108" => 5,
-                "109" => 5,
-                "110" => 5,
-                "111" => 5,
-                "106" => 1
+                '101' => 5,
+                '103' => 5,
+                '104' => 5,
+                '107' => 5,
+                '108' => 5,
+                '109' => 5,
+                '110' => 5,
+                '111' => 5,
+                '106' => 1
             ];
             $aCarAddon = is_string($aData->caraddon)
                 ? json_decode($aData->caraddon, true)
@@ -1089,12 +1081,12 @@ class ShriramService
                 ? $aCarAddon['tpselectedaddon']
                 : (
                     !empty($aCarAddon['selectedaddon'])
-                    ? $aCarAddon['selectedaddon']
-                    : (
-                        !empty($aCarAddon['odselectedaddon'])
-                        ? $aCarAddon['odselectedaddon']
-                        : []
-                    )
+                        ? $aCarAddon['selectedaddon']
+                        : (
+                            !empty($aCarAddon['odselectedaddon'])
+                                ? $aCarAddon['odselectedaddon']
+                                : []
+                        )
                 );
             $validAddons = [];
 
@@ -1122,48 +1114,44 @@ class ShriramService
             $cachemotortype = 'cache_motortype_' . $userId;
             if (GetCache($cachemotortype) == 'knowcar') {
                 if ($aCardata['prepolitype'] == 'odonly') {
-                    $sPrePolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.OWNDAMAGE");
-                    $sPrevexptoDate = $aCardata['odtodate']; //k
-                    $sPrevexpfDate = $aCardata['odfromdate']; //k
+                    $sPrePolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.OWNDAMAGE');
+                    $sPrevexptoDate = $aCardata['odtodate'];  // k
+                    $sPrevexpfDate = $aCardata['odfromdate'];  // k
                     $sPretpfDate = $aCardata['odtpfromdate'];
                     $sPretptoDate = $aCardata['odtptodate'];
                     $date = Carbon::createFromFormat('d-m-Y', $sPrevexptoDate);
                     $PolicyFromDate = $date->addDay()->format('d-m-Y');
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
-
                 } else if ($aCardata['prepolitype'] == 'bundled') {
-                    $sPrePolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.BUNDLED");
-                    $sPrevexptoDate = $aCardata['bdfromdate']; //k
-                    $sPrevexpfDate = $aCardata['bdtodate']; //k
+                    $sPrePolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.BUNDLED');
+                    $sPrevexptoDate = $aCardata['bdfromdate'];  // k
+                    $sPrevexpfDate = $aCardata['bdtodate'];  // k
                     $sPretpfDate = $aCardata['bdtpfromdate'];
                     $sPretptoDate = $aCardata['bdtptodate'];
                     $date = Carbon::createFromFormat('d-m-Y', $sPrevexptoDate);
                     $PolicyFromDate = $date->addDay()->format('d-m-Y');
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
-
                 } elseif ($aCardata['prepolitype'] == 'comprehensive') {
-                    $sPrePolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.PACKAGE");
-                    $sPrevexptoDate = $aCardata['comptodate']; //k
+                    $sPrePolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.PACKAGE');
+                    $sPrevexptoDate = $aCardata['comptodate'];  // k
                     $sPrevexpfDate = $aCardata['compfromdate'];
                     $date = Carbon::createFromFormat('d-m-Y', $sPrevexptoDate);
                     $PolicyFromDate = $date->addDay()->format('d-m-Y');
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
-
                 } elseif ($aCardata['prepolitype'] == 'tponly') {
-                    $sPrePolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.LIABILITY");
+                    $sPrePolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.LIABILITY');
                     $sPrevexptoDate = $aCardata['tptodate'];
                     $sPrevexpfDate = $aCardata['tpfromdate'];
                     $date = Carbon::createFromFormat('d-m-Y', $sPrevexptoDate);
                     $PolicyFromDate = $date->addDay()->format('d-m-Y');
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
-
                 }
             }
-            $sRegNumber = "";
-            $sRegNo2 = "";
-            $sRegNo3 = "";
-            $sRegNo1 = "";
-            $sRegNo4 = "";
+            $sRegNumber = '';
+            $sRegNo2 = '';
+            $sRegNo3 = '';
+            $sRegNo1 = '';
+            $sRegNo4 = '';
             if (GetCache($cachemotortype) == 'newcar') {
                 $sRegNumber = substr(explode('(', $aData->rtocode)[1], 0, -1);
                 $sRegNo1 = substr(str_replace('-', '', $sRegNumber), 0, 2);
@@ -1182,52 +1170,52 @@ class ShriramService
                 return ['status' => '0', 'message' => 'Pincode not available for this service.'];
             }
             $sState = $state->STATE;
-            if (GetCache($cachemotortype) == "knowcar") {
+            if (GetCache($cachemotortype) == 'knowcar') {
                 $aCardata = json_decode($aData->knowcar_reg_details, true) ?? [];
-                if ($aCardata['under'] == "company") {
-                    $PAcover = "0";
-                    $pAcoverReason = "PA_TYPE2";
+                if ($aCardata['under'] == 'company') {
+                    $PAcover = '0';
+                    $pAcoverReason = 'PA_TYPE2';
                 } else {
                     $PAcover = $aData->pacover;
                     if ($PAcover == 0) {
                         $pAcoverReason = json_decode($aData->pacover_reason, true);
                         $ncoverReason = is_array($pAcoverReason) ? (array_keys($pAcoverReason)[0] ?? []) : [];
                         if ($ncoverReason == '1') {
-                            $pAcoverReason = "PA_TYPE1";
+                            $pAcoverReason = 'PA_TYPE1';
                         }
                         if ($ncoverReason == '2') {
-                            $pAcoverReason = "PA_TYPE2";
+                            $pAcoverReason = 'PA_TYPE2';
                         }
                         if ($ncoverReason == '3') {
-                            $pAcoverReason = "PA_TYPE4";
+                            $pAcoverReason = 'PA_TYPE4';
                         } else {
-                            $pAcoverReason = "";
+                            $pAcoverReason = '';
                         }
                     }
                 }
                 $firstregdate = array_key_exists('carregdate', $aCardata) ? $aCardata['carregdate'] : '';
                 $oModel = Shriram_Vehicle_Master::where('id', $aCardata['model'])->first();
             }
-            if (GetCache($cachemotortype) == "newcar") {
+            if (GetCache($cachemotortype) == 'newcar') {
                 $aCardata = json_decode($aData->newcar_reg_details, true) ?? [];
-                if ($aCardata['under'] == "company") {
-                    $PAcover = "0";
-                    $pAcoverReason = "PA_TYPE2";
+                if ($aCardata['under'] == 'company') {
+                    $PAcover = '0';
+                    $pAcoverReason = 'PA_TYPE2';
                 } else {
                     $PAcover = $aData->pacover;
                     if ($PAcover == 0) {
                         $pAcoverReason = json_decode($aData->pacover_reason, true);
                         $ncoverReason = is_array($pAcoverReason) ? (array_keys($pAcoverReason)[0] ?? []) : [];
                         if ($ncoverReason == '1') {
-                            $pAcoverReason = "PA_TYPE1";
+                            $pAcoverReason = 'PA_TYPE1';
                         }
                         if ($ncoverReason == '2') {
-                            $pAcoverReason = "PA_TYPE2";
+                            $pAcoverReason = 'PA_TYPE2';
                         }
                         if ($ncoverReason == '3') {
-                            $pAcoverReason = "PA_TYPE4";
+                            $pAcoverReason = 'PA_TYPE4';
                         } else {
-                            $pAcoverReason = "";
+                            $pAcoverReason = '';
                         }
                     }
                 }
@@ -1235,110 +1223,107 @@ class ShriramService
                 $oModel = Shriram_Vehicle_Master::where('id', $aCardata['model'])->first();
             }
 
-            $sVehicleCode = " ";
+            $sVehicleCode = ' ';
             if ($oModel) {
                 $sVehicleCode = $oModel->VEHICLE_CODE;
             }
-            $sProdCode = getconstant("MOTOR.SHRIRAM.PRODUCTTYPE.PRIVATECAR");
-            $sPolicyType = "";
-            $sProposalType = "";
+            $sProdCode = getconstant('MOTOR.SHRIRAM.PRODUCTTYPE.PRIVATECAR');
+            $sPolicyType = '';
+            $sProposalType = '';
             $today = now();
 
-            if (GetCache($cachemotortype) == "newcar") {
-                $VehicleType = "W";
-                $sProposalType = getconstant("MOTOR.SHRIRAM.PROPOSALTYPE.FRESHPROPOSAL");
+            if (GetCache($cachemotortype) == 'newcar') {
+                $VehicleType = 'W';
+                $sProposalType = getconstant('MOTOR.SHRIRAM.PROPOSALTYPE.FRESHPROPOSAL');
                 if ($nPlanType == '2') {
                     $PolicyFromDate = $today->format('d-m-Y');
                     $PolicyToDate = $today->addYears(3)->subDay()->format('d-m-Y');
-                    $sPolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.BUNDLED");
-                    $NilDepreciationCoverYN = in_array('101', $aAddons) ? "Y" : "N";
-                    $RSACover = in_array('102', $aAddons) ? "Y" : "N";
-                    $DailyExpRemYN = in_array('109', $aAddons) ? "Y" : "N";
-                    $KeyReplacementYN = in_array('111', $aAddons) ? "Y" : "N";
-                    $LossOfPersonBelongYN = in_array('107', $aAddons) ? "Y" : "N";
-                    $EmergencyTranHotelExpRemYN = in_array('108', $aAddons) ? "Y" : "N";
-                    $MultiCarBenefitYN = in_array('110', $aAddons) ? "Y" : "N";
-                    $Eng_Protector = in_array('104', $aAddons) ? "Y" : "N";
-                    $Consumables = in_array('103', $aAddons) ? "Y" : "N";
-                    $InvReturnYN = in_array('106', $aAddons) ? "Y" : "N";
-                    $AntiTheftYN = in_array('119', $aAddons) ? "1" : "0";
-                    $LLtoPaidDriverYN = in_array('116', $aAddons) ? "1" : "0";
-                    $NoEmpCoverLL = in_array('122', $aAddons) ? "1" : "0";
-                    $SHRIMOTORPROTECTION_YN = in_array('113', $aAddons) ? "Y" : "N";
-                    $LimitedTPPDYN = in_array('121', $aAddons) ? "1" : "0";
-                    $VoluntaryExcess = in_array('120', $aAddons) ? "1" : "0";
+                    $sPolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.BUNDLED');
+                    $NilDepreciationCoverYN = in_array('101', $aAddons) ? 'Y' : 'N';
+                    $RSACover = in_array('102', $aAddons) ? 'Y' : 'N';
+                    $DailyExpRemYN = in_array('109', $aAddons) ? 'Y' : 'N';
+                    $KeyReplacementYN = in_array('111', $aAddons) ? 'Y' : 'N';
+                    $LossOfPersonBelongYN = in_array('107', $aAddons) ? 'Y' : 'N';
+                    $EmergencyTranHotelExpRemYN = in_array('108', $aAddons) ? 'Y' : 'N';
+                    $MultiCarBenefitYN = in_array('110', $aAddons) ? 'Y' : 'N';
+                    $Eng_Protector = in_array('104', $aAddons) ? 'Y' : 'N';
+                    $Consumables = in_array('103', $aAddons) ? 'Y' : 'N';
+                    $InvReturnYN = in_array('106', $aAddons) ? 'Y' : 'N';
+                    $AntiTheftYN = in_array('119', $aAddons) ? '1' : '0';
+                    $LLtoPaidDriverYN = in_array('116', $aAddons) ? '1' : '0';
+                    $NoEmpCoverLL = in_array('122', $aAddons) ? '1' : '0';
+                    $SHRIMOTORPROTECTION_YN = in_array('113', $aAddons) ? 'Y' : 'N';
+                    $LimitedTPPDYN = in_array('121', $aAddons) ? '1' : '0';
+                    $VoluntaryExcess = in_array('120', $aAddons) ? '1' : '0';
                     $PAPaidDriverConductorCleaner = 1;
-                    $Geographical = in_array('117', $aAddons) ? 1 : "0";
-                    $Geographical = in_array('118', $aAddons) ? 1 : "0";
-                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? "1" : "0";
+                    $Geographical = in_array('117', $aAddons) ? 1 : '0';
+                    $Geographical = in_array('118', $aAddons) ? 1 : '0';
+                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? '1' : '0';
                 }
             }
 
-            if (GetCache($cachemotortype) == "knowcar") {
-                $VehicleType = "U";
-                $sProposalType = getconstant("MOTOR.SHRIRAM.PROPOSALTYPE.MARKETRENEWAL");
+            if (GetCache($cachemotortype) == 'knowcar') {
+                $VehicleType = 'U';
+                $sProposalType = getconstant('MOTOR.SHRIRAM.PROPOSALTYPE.MARKETRENEWAL');
                 if ($nPlanType == '1') {
-                    $sPolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.OWNDAMAGE");
-                    $NilDepreciationCoverYN = in_array('101', $aAddons) ? "Y" : "N";
-                    $RSACover = in_array('102', $aAddons) ? "Y" : "N";
-                    $DailyExpRemYN = in_array('109', $aAddons) ? "Y" : "N";
-                    $KeyReplacementYN = in_array('111', $aAddons) ? "Y" : "N";
-                    $LossOfPersonBelongYN = in_array('107', $aAddons) ? "Y" : "N";
-                    $EmergencyTranHotelExpRemYN = in_array('108', $aAddons) ? "Y" : "N";
-                    $MultiCarBenefitYN = in_array('110', $aAddons) ? "Y" : "N";
-                    $Eng_Protector = in_array('104', $aAddons) ? "Y" : "N";
-                    $Consumables = in_array('103', $aAddons) ? "Y" : "N";
-                    $InvReturnYN = in_array('106', $aAddons) ? "Y" : "N";
-                    $AntiTheftYN = in_array('119', $aAddons) ? "1" : "0";
-                    $VoluntaryExcess = in_array('120', $aAddons) ? "1" : "0";
+                    $sPolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.OWNDAMAGE');
+                    $NilDepreciationCoverYN = in_array('101', $aAddons) ? 'Y' : 'N';
+                    $RSACover = in_array('102', $aAddons) ? 'Y' : 'N';
+                    $DailyExpRemYN = in_array('109', $aAddons) ? 'Y' : 'N';
+                    $KeyReplacementYN = in_array('111', $aAddons) ? 'Y' : 'N';
+                    $LossOfPersonBelongYN = in_array('107', $aAddons) ? 'Y' : 'N';
+                    $EmergencyTranHotelExpRemYN = in_array('108', $aAddons) ? 'Y' : 'N';
+                    $MultiCarBenefitYN = in_array('110', $aAddons) ? 'Y' : 'N';
+                    $Eng_Protector = in_array('104', $aAddons) ? 'Y' : 'N';
+                    $Consumables = in_array('103', $aAddons) ? 'Y' : 'N';
+                    $InvReturnYN = in_array('106', $aAddons) ? 'Y' : 'N';
+                    $AntiTheftYN = in_array('119', $aAddons) ? '1' : '0';
+                    $VoluntaryExcess = in_array('120', $aAddons) ? '1' : '0';
                     $PAPaidDriverConductorCleaner = 1;
-                    $Geographical = in_array('117', $aAddons) ? 1 : "0";
-                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? "1" : "0";
-                    $SHRIMOTORPROTECTION_YN = in_array('113', $aAddons) ? "Y" : "N";
-
+                    $Geographical = in_array('117', $aAddons) ? 1 : '0';
+                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? '1' : '0';
+                    $SHRIMOTORPROTECTION_YN = in_array('113', $aAddons) ? 'Y' : 'N';
                 }
                 if ($nPlanType == '2') {
-                    $sPolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.PACKAGE");
-                    $NilDepreciationCoverYN = in_array('101', $aAddons) ? "Y" : "N";
-                    $RSACover = in_array('102', $aAddons) ? "Y" : "N";
-                    $DailyExpRemYN = in_array('109', $aAddons) ? "Y" : "N";
-                    $KeyReplacementYN = in_array('111', $aAddons) ? "Y" : "N";
-                    $LossOfPersonBelongYN = in_array('107', $aAddons) ? "Y" : "N";
-                    $EmergencyTranHotelExpRemYN = in_array('108', $aAddons) ? "Y" : "N";
-                    $MultiCarBenefitYN = in_array('110', $aAddons) ? "Y" : "N";
-                    $Eng_Protector = in_array('104', $aAddons) ? "Y" : "N";
-                    $Consumables = in_array('103', $aAddons) ? "Y" : "N";
-                    $InvReturnYN = in_array('106', $aAddons) ? "Y" : "N";
-                    $AntiTheftYN = in_array('119', $aAddons) ? "1" : "0";
-                    $LLtoPaidDriverYN = in_array('116', $aAddons) ? "1" : "0";
-                    $NoEmpCoverLL = in_array('122', $aAddons) ? "1" : "0";
-                    $SHRIMOTORPROTECTION_YN = in_array('113', $aAddons) ? "Y" : "N";
-                    $LimitedTPPDYN = in_array('121', $aAddons) ? "1" : "0";
-                    $VoluntaryExcess = in_array('120', $aAddons) ? "1" : "0";
+                    $sPolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.PACKAGE');
+                    $NilDepreciationCoverYN = in_array('101', $aAddons) ? 'Y' : 'N';
+                    $RSACover = in_array('102', $aAddons) ? 'Y' : 'N';
+                    $DailyExpRemYN = in_array('109', $aAddons) ? 'Y' : 'N';
+                    $KeyReplacementYN = in_array('111', $aAddons) ? 'Y' : 'N';
+                    $LossOfPersonBelongYN = in_array('107', $aAddons) ? 'Y' : 'N';
+                    $EmergencyTranHotelExpRemYN = in_array('108', $aAddons) ? 'Y' : 'N';
+                    $MultiCarBenefitYN = in_array('110', $aAddons) ? 'Y' : 'N';
+                    $Eng_Protector = in_array('104', $aAddons) ? 'Y' : 'N';
+                    $Consumables = in_array('103', $aAddons) ? 'Y' : 'N';
+                    $InvReturnYN = in_array('106', $aAddons) ? 'Y' : 'N';
+                    $AntiTheftYN = in_array('119', $aAddons) ? '1' : '0';
+                    $LLtoPaidDriverYN = in_array('116', $aAddons) ? '1' : '0';
+                    $NoEmpCoverLL = in_array('122', $aAddons) ? '1' : '0';
+                    $SHRIMOTORPROTECTION_YN = in_array('113', $aAddons) ? 'Y' : 'N';
+                    $LimitedTPPDYN = in_array('121', $aAddons) ? '1' : '0';
+                    $VoluntaryExcess = in_array('120', $aAddons) ? '1' : '0';
                     $PAPaidDriverConductorCleaner = 1;
-                    $Geographical = in_array('117', $aAddons) ? 1 : "0";
-                    $Geographical = in_array('118', $aAddons) ? 1 : "0";
-                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? "1" : "0";
-
+                    $Geographical = in_array('117', $aAddons) ? 1 : '0';
+                    $Geographical = in_array('118', $aAddons) ? 1 : '0';
+                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? '1' : '0';
                 }
-                if ($nPlanType == '3' && (GetCache($cachepolicyExpiry) == "Not Expired")) {
-                    $sPolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.LIABILITY");
-                    $LLtoPaidDriverYN = in_array('116', $aAddons) ? "1" : "0";
-                    $LimitedTPPDYN = in_array('121', $aAddons) ? "1" : "0";
-                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? "1" : "0";
-                    $NoEmpCoverLL = in_array('122', $aAddons) ? "1" : "0";
-                    $Geographical = in_array('118', $aAddons) ? 1 : "0";
+                if ($nPlanType == '3' && (GetCache($cachepolicyExpiry) == 'Not Expired')) {
+                    $sPolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.LIABILITY');
+                    $LLtoPaidDriverYN = in_array('116', $aAddons) ? '1' : '0';
+                    $LimitedTPPDYN = in_array('121', $aAddons) ? '1' : '0';
+                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? '1' : '0';
+                    $NoEmpCoverLL = in_array('122', $aAddons) ? '1' : '0';
+                    $Geographical = in_array('118', $aAddons) ? 1 : '0';
                 }
-                if ($nPlanType == '3' && (GetCache($cachepolicyExpiry) == "Expired")) {
-                    $sPolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.LIABILITY");
+                if ($nPlanType == '3' && (GetCache($cachepolicyExpiry) == 'Expired')) {
+                    $sPolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.LIABILITY');
                     $PolicyFromDate = $today->format('d-m-Y');
                     $PolicyToDate = $today->addYear()->subDay()->format('d-m-Y');
-                    $LLtoPaidDriverYN = in_array('116', $aAddons) ? "1" : "0";
-                    $LimitedTPPDYN = in_array('121', $aAddons) ? "1" : "0";
-                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? "1" : "0";
-                    $NoEmpCoverLL = in_array('122', $aAddons) ? "1" : "0";
-                    $Geographical = in_array('118', $aAddons) ? 1 : "0";
-
+                    $LLtoPaidDriverYN = in_array('116', $aAddons) ? '1' : '0';
+                    $LimitedTPPDYN = in_array('121', $aAddons) ? '1' : '0';
+                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? '1' : '0';
+                    $NoEmpCoverLL = in_array('122', $aAddons) ? '1' : '0';
+                    $Geographical = in_array('118', $aAddons) ? 1 : '0';
                 }
             }
             $today = now();
@@ -1346,146 +1331,147 @@ class ShriramService
             if ($sRtocity) {
                 $sRtocity = $sRtocity->RTOCITY ?? $sRtocity->RTONAME;
             } else {
-                $sRtocity = "";
+                $sRtocity = '';
             }
             $cachecaridv = 'cache_' . $userId . '_caridv';
             $idv = GetCache($cachecaridv);
-            //$url = MasterAPI::where('apicode', '115')->first()->apistring;
+            // $url = MasterAPI::where('apicode', '115')->first()->apistring;
             $url = 'https://nsecureapi.shriramgi.com/NOVADIGITAL/SVS_Services/PolicyGeneration.svc/RestService/GetQuote';
             $curl = curl_init();
             $postJson = json_encode([
-                "objPolicyEntryETT" => [
-                    "ReferenceNo" => "",
-                    "ProdCode" => $sProdCode,
-                    "PolicyFromDt" => $PolicyFromDate,
-                    "PolicyToDt" => $PolicyToDate,
-                    "PolicyIssueDt" => $PolicyFromDate,
-                    "InsuredPrefix" => "1",
-                    "InsuredName" => $AuthUser['name'],
-                    "PolicyType" => $sPolicyType,
-                    "ProposalType" => $sProposalType,
-                    "VehicleCode" => $sVehicleCode ?? "UL8066",
-                    "EngineNo" => "",
-                    "FirstRegDt" => $firstregdate ?? "",
-                    "VehicleType" => $VehicleType ?? "",
-                    "PAYEAR" => "1",
-                    "ChassisNo" => "",
-                    "RegNo1" => $sRegNo1,
-                    "RegNo2" => $sRegNo2,
-                    "RegNo3" => $sRegNo3,
-                    "RegNo4" => $sRegNo4,
-                    "RTOCode" => $sRegNo1 . "-" . $sRegNo2,
-                    "PreviousPolicyNo" => "",
-                    "PreviousInsurer" => "",
-                    "PreviousPolicyFromDt" => $sPrevexpfDate ?? "",
-                    "PreviousPolicyToDt" => $sPrevexptoDate ?? "",
-                    "PreviousPolicyUWYear" => "",
-                    "PreviousPolicySI" => "",
-                    "TRANSFEROFOWNER" => $transferOfowner ?? "",
-                    "PreviousPolicyClaimYN" => $claim,
-                    "PreviousPolicyNCBPerc" => $claimper,
-                    "PreviousPolicyType" => $sPrePolicyType ?? "",
-                    "PreviousNilDepreciation" => "",
-                    "PAforUnnamedPassengerYN" => $PAforUnnamedPassenger ?? "",
-                    "PAforUnnamedPassengerSI" => ($PAforUnnamedPassenger == 1) ? $PAforUnnamedamount : "",
-                    "ElectricalaccessYN" => array_key_exists('electrical', $aResult) ? "Y" : "N",
-                    "ElectricalaccessSI" => array_key_exists('electrical', $aResult) ? $aResult['electrical'] : '',
-                    "ElectricalaccessRemarks" => "",
-                    "NonElectricalaccessYN" => array_key_exists('non-electrical', $aResult) ? "Y" : "N",
-                    "NonElectricalaccessSI" => array_key_exists('non-electrical', $aResult) ? $aResult['non-electrical'] : '',
-                    "NonElectricalaccessRemarks" => "",
-                    "PAPaidDriverConductorCleanerYN" => "Y",
-                    "PAPaidDriverConductorCleanerSI" => "",
-                    "PAPaidDriverCount" => "1",
-                    "PAPaidConductorCount" => "1",
-                    "PAPaidCleanerCount" => "1",
-                    "PAOwnerDriverExclusion" => $PAcover ?? "",
-                    "PAOwnerDriverExReason" => $pAcoverReason ?? "",
-                    "NomineeNameforPAOwnerDriver" => "Demo",
-                    "NomineeAgeforPAOwnerDriver" => "26",
-                    "NomineeRelationforPAOwnerDriver" => "Son",
-                    "AppointeeNameforPAOwnerDriver" => "",
-                    "AppointeeRelationforPAOwnerDriver" => "",
-                    "LLtoPaidDriverYN" => $LLtoPaidDriverYN ?? "0",
-                    "NoEmpCoverLL" => $NoEmpCoverLL ?? "0",
-                    "Bangladesh" => ($Geographical == 1) ? "1" : "0",
-                    "Bhutan" => ($Geographical == 1) ? "1" : "0",
-                    "SriLanka" => ($Geographical == 1) ? "1" : "0",
-                    "Nepal" => ($Geographical == 1) ? "1" : "0",
-                    "Pakistan" => ($Geographical == 1) ? "1" : "0",
-                    "Maldives" => ($Geographical == 1) ? "1" : "0",
-                    "CNGKitYN" => array_key_exists('cng', $aResult) ? "Y" : "N",
-                    "CNGKitSI" => array_key_exists('cng', $aResult) ? $aResult['cng'] : '',
-                    "InBuiltCNGKitYN" => "0",
-                    "NilDepreciationCoverYN" => $NilDepreciationCoverYN ?? "",
-                    "RSACover" => $RSACover ?? "",
-                    "DailyExpRemYN" => $DailyExpRemYN ?? "",
-                    "KeyReplacementYN" => $KeyReplacementYN ?? "",
-                    "LossOfPersonBelongYN" => $LossOfPersonBelongYN ?? "",
-                    "EmergencyTranHotelExpRemYN" => $EmergencyTranHotelExpRemYN ?? "",
-                    "MultiCarBenefitYN" => $MultiCarBenefitYN ?? "",
-                    "Eng_Protector" => $Eng_Protector ?? "",
-                    "Consumables" => $Consumables ?? "",
-                    "InvReturnYN" => $InvReturnYN ?? "",
-                    "SHRIMOTORPROTECTION_YN" => $SHRIMOTORPROTECTION_YN ?? "",
-                    "LimitedTPPDYN" => $LimitedTPPDYN ?? "0",
-                    "Gender" => $AuthUser['gender'][0] ?? '',
-                    "Address1" => "",
-                    "Address2" => "",
-                    "Address3" => "",
-                    "State" => $sState,
-                    "City" => $sRtocity,
-                    "PinCode" => $AuthUser['pincode'],
-                    "PanNo" => "",
-                    "GSTNo" => "",
-                    "TelephoneNo" => "",
-                    "FaxNo" => "",
-                    "EMailID" => "",
-                    "tpPolFmdt" => $sPretpfDate ?? "",
-                    "tpPolTodt" => $sPretptoDate ?? "",
-                    "tpPolNo" => "",
-                    "tpPolComp" => "",
-                    "tpPolAddr" => "",
-                    "MobileNo" => "",
-                    "DateOfBirth" => "",
-                    "POSAgentName" => "",
-                    "POSAgentPanNo" => "",
-                    "CoverNoteNo" => "",
-                    "CoverNoteDt" => "",
-                    "IDV_of_Vehicle" => $idv ?? "0",
-                    "Colour" => "",
-                    "VehiclePurposeYN" => "",
-                    "DriverAgeYN" => "",
-                    "LimitOwnPremiseYN" => "0",
-                    "VoluntaryExcess" => $VoluntaryExcess ?? "",
-                    "DeTariff" => "",
-                    "PreInspectionReportYN" => "",
-                    "PreInspection" => "",
-                    "BreakIn" => "NO",
-                    "AddonPackage" => "",
-                    "AntiTheftYN" => $AntiTheftYN ?? "",
-                    "HypothecationType" => "",
-                    "HypothecationBankName" => "",
-                    "HypothecationAddress1" => "",
-                    "HypothecationAddress2" => "",
-                    "HypothecationAddress3" => "",
-                    "HypothecationAgreementNo" => "",
-                    "HypothecationCountry" => "",
-                    "HypothecationState" => "",
-                    "HypothecationCity" => "",
-                    "HypothecationPinCode" => "",
-                    "SpecifiedPersonField" => "",
-                    "AadharNo" => "",
-                    "AadharEnrollNo" => ""
+                'objPolicyEntryETT' => [
+                    'ReferenceNo' => '',
+                    'ProdCode' => $sProdCode,
+                    'PolicyFromDt' => $PolicyFromDate,
+                    'PolicyToDt' => $PolicyToDate,
+                    'PolicyIssueDt' => $PolicyFromDate,
+                    'InsuredPrefix' => '1',
+                    'InsuredName' => $AuthUser['name'],
+                    'PolicyType' => $sPolicyType,
+                    'ProposalType' => $sProposalType,
+                    'VehicleCode' => $sVehicleCode ?? 'UL8066',
+                    'EngineNo' => '',
+                    'FirstRegDt' => $firstregdate ?? '',
+                    'VehicleType' => $VehicleType ?? '',
+                    'PAYEAR' => '1',
+                    'ChassisNo' => '',
+                    'RegNo1' => $sRegNo1,
+                    'RegNo2' => $sRegNo2,
+                    'RegNo3' => $sRegNo3,
+                    'RegNo4' => $sRegNo4,
+                    'RTOCode' => $sRegNo1 . '-' . $sRegNo2,
+                    'PreviousPolicyNo' => '',
+                    'PreviousInsurer' => '',
+                    'PreviousPolicyFromDt' => $sPrevexpfDate ?? '',
+                    'PreviousPolicyToDt' => $sPrevexptoDate ?? '',
+                    'PreviousPolicyUWYear' => '',
+                    'PreviousPolicySI' => '',
+                    'TRANSFEROFOWNER' => $transferOfowner ?? '',
+                    'PreviousPolicyClaimYN' => $claim,
+                    'PreviousPolicyNCBPerc' => $claimper,
+                    'PreviousPolicyType' => $sPrePolicyType ?? '',
+                    'PreviousNilDepreciation' => '',
+                    'PAforUnnamedPassengerYN' => $PAforUnnamedPassenger ?? '',
+                    'PAforUnnamedPassengerSI' => ($PAforUnnamedPassenger == 1) ? $PAforUnnamedamount : '',
+                    'ElectricalaccessYN' => array_key_exists('electrical', $aResult) ? 'Y' : 'N',
+                    'ElectricalaccessSI' => array_key_exists('electrical', $aResult) ? $aResult['electrical'] : '',
+                    'ElectricalaccessRemarks' => '',
+                    'NonElectricalaccessYN' => array_key_exists('non-electrical', $aResult) ? 'Y' : 'N',
+                    'NonElectricalaccessSI' => array_key_exists('non-electrical', $aResult) ? $aResult['non-electrical'] : '',
+                    'NonElectricalaccessRemarks' => '',
+                    'PAPaidDriverConductorCleanerYN' => 'Y',
+                    'PAPaidDriverConductorCleanerSI' => '',
+                    'PAPaidDriverCount' => '1',
+                    'PAPaidConductorCount' => '1',
+                    'PAPaidCleanerCount' => '1',
+                    'PAOwnerDriverExclusion' => $PAcover ?? '',
+                    'PAOwnerDriverExReason' => $pAcoverReason ?? '',
+                    'NomineeNameforPAOwnerDriver' => 'Demo',
+                    'NomineeAgeforPAOwnerDriver' => '26',
+                    'NomineeRelationforPAOwnerDriver' => 'Son',
+                    'AppointeeNameforPAOwnerDriver' => '',
+                    'AppointeeRelationforPAOwnerDriver' => '',
+                    'LLtoPaidDriverYN' => $LLtoPaidDriverYN ?? '0',
+                    'NoEmpCoverLL' => $NoEmpCoverLL ?? '0',
+                    'Bangladesh' => ($Geographical == 1) ? '1' : '0',
+                    'Bhutan' => ($Geographical == 1) ? '1' : '0',
+                    'SriLanka' => ($Geographical == 1) ? '1' : '0',
+                    'Nepal' => ($Geographical == 1) ? '1' : '0',
+                    'Pakistan' => ($Geographical == 1) ? '1' : '0',
+                    'Maldives' => ($Geographical == 1) ? '1' : '0',
+                    'CNGKitYN' => array_key_exists('cng', $aResult) ? 'Y' : 'N',
+                    'CNGKitSI' => array_key_exists('cng', $aResult) ? $aResult['cng'] : '',
+                    'InBuiltCNGKitYN' => '0',
+                    'NilDepreciationCoverYN' => $NilDepreciationCoverYN ?? '',
+                    'RSACover' => $RSACover ?? '',
+                    'DailyExpRemYN' => $DailyExpRemYN ?? '',
+                    'KeyReplacementYN' => $KeyReplacementYN ?? '',
+                    'LossOfPersonBelongYN' => $LossOfPersonBelongYN ?? '',
+                    'EmergencyTranHotelExpRemYN' => $EmergencyTranHotelExpRemYN ?? '',
+                    'MultiCarBenefitYN' => $MultiCarBenefitYN ?? '',
+                    'Eng_Protector' => $Eng_Protector ?? '',
+                    'Consumables' => $Consumables ?? '',
+                    'InvReturnYN' => $InvReturnYN ?? '',
+                    'SHRIMOTORPROTECTION_YN' => $SHRIMOTORPROTECTION_YN ?? '',
+                    'LimitedTPPDYN' => $LimitedTPPDYN ?? '0',
+                    'Gender' => $AuthUser['gender'][0] ?? '',
+                    'Address1' => '',
+                    'Address2' => '',
+                    'Address3' => '',
+                    'State' => $sState,
+                    'City' => $sRtocity,
+                    'PinCode' => $AuthUser['pincode'],
+                    'PanNo' => '',
+                    'GSTNo' => '',
+                    'TelephoneNo' => '',
+                    'FaxNo' => '',
+                    'EMailID' => '',
+                    'tpPolFmdt' => $sPretpfDate ?? '',
+                    'tpPolTodt' => $sPretptoDate ?? '',
+                    'tpPolNo' => '',
+                    'tpPolComp' => '',
+                    'tpPolAddr' => '',
+                    'MobileNo' => '',
+                    'DateOfBirth' => '',
+                    'POSAgentName' => '',
+                    'POSAgentPanNo' => '',
+                    'CoverNoteNo' => '',
+                    'CoverNoteDt' => '',
+                    'IDV_of_Vehicle' => $idv ?? '0',
+                    'Colour' => '',
+                    'VehiclePurposeYN' => '',
+                    'DriverAgeYN' => '',
+                    'LimitOwnPremiseYN' => '0',
+                    'VoluntaryExcess' => $VoluntaryExcess ?? '',
+                    'DeTariff' => '',
+                    'PreInspectionReportYN' => '',
+                    'PreInspection' => '',
+                    'BreakIn' => 'NO',
+                    'AddonPackage' => '',
+                    'AntiTheftYN' => $AntiTheftYN ?? '',
+                    'HypothecationType' => '',
+                    'HypothecationBankName' => '',
+                    'HypothecationAddress1' => '',
+                    'HypothecationAddress2' => '',
+                    'HypothecationAddress3' => '',
+                    'HypothecationAgreementNo' => '',
+                    'HypothecationCountry' => '',
+                    'HypothecationState' => '',
+                    'HypothecationCity' => '',
+                    'HypothecationPinCode' => '',
+                    'SpecifiedPersonField' => '',
+                    'AadharNo' => '',
+                    'AadharEnrollNo' => ''
                 ]
             ]);
             //  return[
-            //     "asdf" => $postJson 
+            //     "asdf" => $postJson
             //  ];
 
-            //\Log::info([$nPlanType=>$postJson]);
-            //\Log::info(['today'=>$today,'plantype'=>$nPlanType]);
-            \Log::info(['Car_Quotation_shriram_request' => $postJson]);
+            // \Log::info([$nPlanType=>$postJson]);
+            // \Log::info(['today'=>$today,'plantype'=>$nPlanType]);
+            // \Log::info(['Car_Quotation_shriram_request' => $postJson]);
+            SaveFile($postJson, 'shriram_car_quote_request.txt');
             curl_setopt_array($curl, array(
                 CURLOPT_URL => $url,
                 CURLOPT_RETURNTRANSFER => true,
@@ -1497,35 +1483,34 @@ class ShriramService
                 CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => $postJson,
                 CURLOPT_HTTPHEADER => array(
-                    'Username: ' . self::$Username, // Correct format
-                    'Password: ' . self::$Password, // Correct format
+                    'Username: ' . self::$Username,  // Correct format
+                    'Password: ' . self::$Password,  // Correct format
                     'Content-Type: application/json',
                     'Accept: application/json'
                 ),
             ));
             $response = curl_exec($curl);
-            //  return[
-            //     "asdf" => $response 
-            //  ];
+            SaveFile($response, 'shriram_car_quote_response.txt');
             curl_close($curl);
-            \Log::info(['Car_Quotation_shriram_response' => $response]);
+            // \Log::info(['Car_Quotation_shriram_response' => $response]);
             return $response;
         } catch (\Exception $e) {
-            \Log::info($e->getMessage() . "errorcode:shriram_service_generatePrivateCarQuote");
+            // \Log::info($e->getMessage() . "errorcode:shriram_service_generatePrivateCarQuote");
             return ['status' => '0', 'message' => $e->getMessage() . 'An error occurred while fetching cache data.'];
         }
     }
+
     public static function FileIntoBase64($filePath)
     {
         $base64 = '';
         $image = '';
-        $parts = explode("/", $filePath);
-        $extension = explode(".", end($parts));
+        $parts = explode('/', $filePath);
+        $extension = explode('.', end($parts));
         if (file_exists($filePath)) {
             $image = file_get_contents($filePath);
             $base64 = base64_encode($image);
         } else {
-            throw new \Exception("File not found.");
+            throw new \Exception('File not found.');
         }
         return ['extension' => '.' . end($extension), 'based64' => $base64];
     }
@@ -1533,7 +1518,6 @@ class ShriramService
     public static function privateCarProposal(Request $request, $today, $nextyear, $aData)
     {
         try {
-
             $userId = $request->userid;
             $user = User::find($userId);
             $AuthUser = $user->toArray();
@@ -1555,34 +1539,33 @@ class ShriramService
             if (!empty($aAccessories)) {
                 foreach ($aAccessories as $item) {
                     $aResult[$item['type']] = $item['amount'];
-
                 }
             }
-            $pAcoverReason = "";
-            $PAcover = "";
+            $pAcoverReason = '';
+            $PAcover = '';
             $PAforUnnamedamount = json_decode($aData->caraddonvalue, true);
-            $PAforUnnamedamount = !empty($PAforUnnamedamount) ? $PAforUnnamedamount : "0";
+            $PAforUnnamedamount = !empty($PAforUnnamedamount) ? $PAforUnnamedamount : '0';
             $nTpolicyNo = null;
             $sTpInsurer = null;
             $prevPolicyNo = null;
             $sRegNumber = $aData->carnumber;
-            $sRegNumber = "";
-            $sRegNo2 = "";
-            $sRegNo3 = "";
-            $sRegNo1 = "";
-            $sRegNo4 = "";
+            $sRegNumber = '';
+            $sRegNo2 = '';
+            $sRegNo3 = '';
+            $sRegNo1 = '';
+            $sRegNo4 = '';
             $cachemotortype = 'cache_motortype_' . $userId;
 
             if (GetCache($cachemotortype) == 'newcar') {
                 $sRegNumber = substr(explode('(', $aData->rtocode)[1], 0, -1);
-                $sRegNo1 = substr(str_replace('-', '', $sRegNumber), 0, 2);//k
-                $sRegNo2 = substr(str_replace('-', '', $sRegNumber), 2, 2);//k
+                $sRegNo1 = substr(str_replace('-', '', $sRegNumber), 0, 2);  // k
+                $sRegNo2 = substr(str_replace('-', '', $sRegNumber), 2, 2);  // k
             } else {
                 $sRegNumber = $aData->carnumber;
-                $sRegNo1 = substr($sRegNumber, 0, 2);//k
-                $sRegNo2 = substr($sRegNumber, 2, 2);//k
-                $sRegNo3 = substr($sRegNumber, 4, 2);//k
-                $sRegNo4 = substr($sRegNumber, 6, 4);//k
+                $sRegNo1 = substr($sRegNumber, 0, 2);  // k
+                $sRegNo2 = substr($sRegNumber, 2, 2);  // k
+                $sRegNo3 = substr($sRegNumber, 4, 2);  // k
+                $sRegNo4 = substr($sRegNumber, 6, 4);  // k
                 $sRegdate = $aCardata['carregdate'] ?? date('d-m-Y');
             }
             $sPrevexptoDate = null;
@@ -1600,9 +1583,9 @@ class ShriramService
 
             if (GetCache($cachemotortype) == 'knowcar') {
                 if ($aCardata['prepolitype'] == 'odonly') {
-                    $sPrePolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.OWNDAMAGE");
-                    $sPrevexptoDate = $aCardata['odtodate']; //k
-                    $sPrevexpfDate = $aCardata['odfromdate']; //k
+                    $sPrePolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.OWNDAMAGE');
+                    $sPrevexptoDate = $aCardata['odtodate'];  // k
+                    $sPrevexpfDate = $aCardata['odfromdate'];  // k
                     $sPretpfDate = $aCardata['odtpfromdate'];
                     $sPretptoDate = $aCardata['odtptodate'];
                     $nTpolicyNo = array_key_exists('tppolicynumber', $prevPolicydata) ? $prevPolicydata['tppolicynumber'] : '';
@@ -1611,11 +1594,10 @@ class ShriramService
                     $date = Carbon::createFromFormat('d-m-Y', $sPrevexptoDate);
                     $PolicyFromDate = $date->addDay()->format('d-m-Y');
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
-
                 } else if ($aCardata['prepolitype'] == 'bundled') {
-                    $sPrePolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.BUNDLED");
-                    $sPrevexptoDate = $aCardata['bdtodate']; //k
-                    $sPrevexpfDate = $aCardata['bdfromdate']; //k
+                    $sPrePolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.BUNDLED');
+                    $sPrevexptoDate = $aCardata['bdtodate'];  // k
+                    $sPrevexpfDate = $aCardata['bdfromdate'];  // k
                     $sPretpfDate = $aCardata['bdtpfromdate'];
                     $sPretptoDate = $aCardata['bdtptodate'];
                     $nTpolicyNo = array_key_exists('tppolicynumber', $prevPolicydata) ? $prevPolicydata['tppolicynumber'] : '';
@@ -1624,19 +1606,17 @@ class ShriramService
                     $date = Carbon::createFromFormat('d-m-Y', $sPrevexptoDate);
                     $PolicyFromDate = $date->addDay()->format('d-m-Y');
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
-
                 } elseif ($aCardata['prepolitype'] == 'comprehensive') {
-                    $sPrePolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.PACKAGE");
-                    $sPrevexptoDate = $aCardata['comptodate']; //k
+                    $sPrePolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.PACKAGE');
+                    $sPrevexptoDate = $aCardata['comptodate'];  // k
                     $sPrevexpfDate = $aCardata['compfromdate'];
                     $date = Carbon::createFromFormat('d-m-Y', $sPrevexptoDate);
                     $PolicyFromDate = $date->addDay()->format('d-m-Y');
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
-
                 } elseif ($aCardata['prepolitype'] == 'tponly') {
-                    $sPrePolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.LIABILITY");
-                    $sPrevexptoDate = $aCardata['tptodate']; //k
-                    $sPrevexpfDate = $aCardata['tpfromdate']; //k
+                    $sPrePolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.LIABILITY');
+                    $sPrevexptoDate = $aCardata['tptodate'];  // k
+                    $sPrevexpfDate = $aCardata['tpfromdate'];  // k
                     $date = Carbon::createFromFormat('d-m-Y', $sPrevexptoDate);
                     $PolicyFromDate = $date->addDay()->format('d-m-Y');
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
@@ -1648,24 +1628,22 @@ class ShriramService
             } else {
                 $oModel = Shriram_Vehicle_Master::where('id', $aCardata['model'])->first();
             }
-            $sVehicleCode = "";
+            $sVehicleCode = '';
             if ($oModel) {
                 $sVehicleCode = $oModel->VEHICLE_CODE;
             }
             $oObj = new ShriramCarController();
             $aDocument = UserMotorDescription::where('userid', $userId)->first();
-            //return $aDocument;
+            // return $aDocument;
 
             $aIdDetails = $aDocument->idnumber ? json_decode($aDocument->idnumber, true) : [];
-
-
 
             $filePath = json_decode($aDocument->document, true);
             $insurePhotoB64 = self::FileIntoBase64($filePath['insurephoto']);
             $identityPhotoB64 = self::FileIntoBase64($filePath['identity']['identityfront']);
             $addressPhotoB64 = self::FileIntoBase64($filePath['address']['addressfront']);
             self::initlize();
-            //$url = MasterAPI::where('apicode', '116')->first()->apistring;
+            // $url = MasterAPI::where('apicode', '116')->first()->apistring;
             $url = 'https://nsecureapi.shriramgi.com/NOVADIGITAL/SVS_Services/PolicyGeneration.svc/RestService/GenerateProposal';
             $aNominee = $oJourneyData->nominee_details ? jdec($oJourneyData->nominee_details) : [];
             $permanentAddress = json_decode($oJourneyData->permanent_address, true) ?? [];
@@ -1676,15 +1654,15 @@ class ShriramService
             $dRegDate = $aData->knowcar_reg_details ? json_decode($aData->knowcar_reg_details, true)['carregdate'] : date('d-m-Y');
             $regDate = \DateTime::createFromFormat('d-m-Y', $dRegDate);
             $addonAgeLimit = [
-                "101" => 5,
-                "103" => 5,
-                "104" => 5,
-                "107" => 5,
-                "108" => 5,
-                "109" => 5,
-                "110" => 5,
-                "111" => 5,
-                "106" => 1
+                '101' => 5,
+                '103' => 5,
+                '104' => 5,
+                '107' => 5,
+                '108' => 5,
+                '109' => 5,
+                '110' => 5,
+                '111' => 5,
+                '106' => 1
             ];
             $aCarAddon = is_string($aData->caraddon)
                 ? json_decode($aData->caraddon, true)
@@ -1693,12 +1671,12 @@ class ShriramService
                 ? $aCarAddon['tpselectedaddon']
                 : (
                     !empty($aCarAddon['selectedaddon'])
-                    ? $aCarAddon['selectedaddon']
-                    : (
-                        !empty($aCarAddon['odselectedaddon'])
-                        ? $aCarAddon['odselectedaddon']
-                        : []
-                    )
+                        ? $aCarAddon['selectedaddon']
+                        : (
+                            !empty($aCarAddon['odselectedaddon'])
+                                ? $aCarAddon['odselectedaddon']
+                                : []
+                        )
                 );
             $validAddons = [];
 
@@ -1722,53 +1700,53 @@ class ShriramService
             $randomValue = self::genRandomNumber();
             $EngineNo = $aVehicledetails['Enginenumber'];
             $ChassisNo = $aVehicledetails['Chassisnumber'];
-            $sProdCode = getconstant("MOTOR.SHRIRAM.PRODUCTTYPE.PRIVATECAR");
-            $sPolicyType = "";
-            $sProposalType = "";
+            $sProdCode = getconstant('MOTOR.SHRIRAM.PRODUCTTYPE.PRIVATECAR');
+            $sPolicyType = '';
+            $sProposalType = '';
             $gstno = null;
             $today = now();
-            if (GetCache($cachemotortype) == "newcar") {
-                $VehicleType = "W";
-                $sProposalType = getconstant("MOTOR.SHRIRAM.PROPOSALTYPE.FRESHPROPOSAL");
+            if (GetCache($cachemotortype) == 'newcar') {
+                $VehicleType = 'W';
+                $sProposalType = getconstant('MOTOR.SHRIRAM.PROPOSALTYPE.FRESHPROPOSAL');
                 $companydetails = json_decode($oJourneyData->company_details, true);
-                if ($aNewCardata['under'] == "company") {
+                if ($aNewCardata['under'] == 'company') {
                     $PAcover = 0;
-                    $pAcoverReason = "PA_TYPE2";
+                    $pAcoverReason = 'PA_TYPE2';
                 } else {
                     $PAcover = $aData->pacover;
                     if ($PAcover == 0) {
                         $pAcoverReason = json_decode($aData->pacover_reason, true);
                         $ncoverReason = is_array($pAcoverReason) ? (array_keys($pAcoverReason)[0] ?? []) : [];
                         if ($ncoverReason == '1') {
-                            $pAcoverReason = "PA_TYPE1";
+                            $pAcoverReason = 'PA_TYPE1';
                         }
                         if ($ncoverReason == '2') {
-                            $pAcoverReason = "PA_TYPE2";
+                            $pAcoverReason = 'PA_TYPE2';
                         }
                         if ($ncoverReason == '3') {
-                            $pAcoverReason = "PA_TYPE4";
+                            $pAcoverReason = 'PA_TYPE4';
                         } else {
-                            $pAcoverReason = "";
+                            $pAcoverReason = '';
                         }
                     }
                 }
                 if ($nPlanType == '2') {
-                    $sPolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.BUNDLED");
+                    $sPolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.BUNDLED');
                     $sRegdate = $today->format('d-m-Y');
                     $PolicyFromDate = $today->format('d-m-Y');
                     $PolicyToDate = $today->addYears(3)->subDay()->format('d-m-Y');
-                    $Geographical = in_array('118', $aAddons) ? 1 : "0";
-                    $Geographical = in_array('117', $aAddons) ? 1 : "0";
-                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? "1" : "0";
+                    $Geographical = in_array('118', $aAddons) ? 1 : '0';
+                    $Geographical = in_array('117', $aAddons) ? 1 : '0';
+                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? '1' : '0';
                 }
             }
-            if (GetCache($cachemotortype) == "knowcar") {
-                $VehicleType = "U";
+            if (GetCache($cachemotortype) == 'knowcar') {
+                $VehicleType = 'U';
                 $prevPolicyNo = $prevPolicydata['policynumber'];
                 $prevInsurCmpny = Shriram_Prev_insurence::where('id', $prevPolicydata['prevInsuranceId'])->first()->insurance;
-                if ($aCardata['under'] == "company") {
+                if ($aCardata['under'] == 'company') {
                     $PAcover = 0;
-                    $pAcoverReason = "PA_TYPE2";
+                    $pAcoverReason = 'PA_TYPE2';
                     $companydetails = json_decode($oJourneyData->company_details, true);
                     $gstno = $companydetails['gstnumber'];
                 } else {
@@ -1778,55 +1756,53 @@ class ShriramService
                         $pAcoverReason = json_decode($aData->pacover_reason, true);
                         $ncoverReason = is_array($pAcoverReason) ? (array_keys($pAcoverReason)[0] ?? []) : [];
                         if ($ncoverReason == '1') {
-                            $pAcoverReason = "PA_TYPE1";
+                            $pAcoverReason = 'PA_TYPE1';
                         }
                         if ($ncoverReason == '2') {
-                            $pAcoverReason = "PA_TYPE2";
+                            $pAcoverReason = 'PA_TYPE2';
                         }
                         if ($ncoverReason == '3') {
-                            $pAcoverReason = "PA_TYPE4";
+                            $pAcoverReason = 'PA_TYPE4';
                         } else {
-                            $pAcoverReason = "";
+                            $pAcoverReason = '';
                         }
                     }
                 }
-                $sProposalType = getconstant("MOTOR.SHRIRAM.PROPOSALTYPE.MARKETRENEWAL");
+                $sProposalType = getconstant('MOTOR.SHRIRAM.PROPOSALTYPE.MARKETRENEWAL');
                 if ($nPlanType == '1') {
-                    $sPolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.OWNDAMAGE");
-                    $Geographical = in_array('117', $aAddons) ? 1 : "0";
+                    $sPolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.OWNDAMAGE');
+                    $Geographical = in_array('117', $aAddons) ? 1 : '0';
                 }
                 if ($nPlanType == '2') {
-                    $sPolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.PACKAGE");
-                    $Geographical = in_array('117', $aAddons) ? 1 : "0";
-                    $Geographical = in_array('118', $aAddons) ? 1 : "0";
-                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? "1" : "0";
+                    $sPolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.PACKAGE');
+                    $Geographical = in_array('117', $aAddons) ? 1 : '0';
+                    $Geographical = in_array('118', $aAddons) ? 1 : '0';
+                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? '1' : '0';
                 }
-                if ($nPlanType == '3' && (GetCache($cachepolicyExpiry) == "Not Expired")) {
-                    $sPolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.LIABILITY");
-                    $Geographical = in_array('118', $aAddons) ? 1 : "0";
-                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? "1" : "0";
-
+                if ($nPlanType == '3' && (GetCache($cachepolicyExpiry) == 'Not Expired')) {
+                    $sPolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.LIABILITY');
+                    $Geographical = in_array('118', $aAddons) ? 1 : '0';
+                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? '1' : '0';
                 }
-                if ($nPlanType == '3' && (GetCache($cachepolicyExpiry) == "Expired")) {
-                    $sPolicyType = getconstant("MOTOR.SHRIRAM.POLICYTYPE.LIABILITY");
-                    $Geographical = in_array('118', $aAddons) ? 1 : "0";
-                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? "1" : "0";
+                if ($nPlanType == '3' && (GetCache($cachepolicyExpiry) == 'Expired')) {
+                    $sPolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.LIABILITY');
+                    $Geographical = in_array('118', $aAddons) ? 1 : '0';
+                    $PAforUnnamedPassenger = in_array('115', $aAddons) ? '1' : '0';
                     $PolicyFromDate = $today->format('d-m-Y');
                     $PolicyToDate = $today->addYear()->subDay()->format('d-m-Y');
-
                 }
             }
             $sRtocity = getRtocityApi($request, $sRegNumber);
             if ($sRtocity) {
                 $sRtocity = !empty($sRtocity->RTOCITY) ? $sRtocity->RTOCITY : $sRtocity->RTONAME;
             } else {
-                $sRtocity = "";
+                $sRtocity = '';
             }
             $dob = !empty($oJourneyData->dob)
                 ? $oJourneyData->dob
                 : (!empty($user->dob)
                     ? $user->dob
-                    : "29-04-2000");
+                    : '29-04-2000');
             $cacheproductcode = 'cache_productcode_' . $userId;
             SetCache($cacheproductcode, $sProdCode);
             $cacheproposaltype = 'cache_proposaltype_' . $userId;
@@ -1835,171 +1811,171 @@ class ShriramService
             SetCache($cachepolicytpe, $sPolicyType);
             $curl = curl_init();
             $postdata = json_encode([
-                "objPolicyEntryETT" => [
-                    "ReferenceNo" => "123456",//unique each request
-                    "ProdCode" => $sProdCode,
-                    "PolicyFromDt" => $PolicyFromDate ?? "",//'02-05-2025',
-                    "PolicyToDt" => $PolicyToDate ?? "",//"1-05-2026",
-                    "PolicyIssueDt" => $PolicyFromDate ?? "",//'02-05-2025',
-                    "InsuredPrefix" => "1",//mr/mrs
-                    "InsuredName" => $oJourneyData->name ?? "",//name
-                    "Gender" => $AuthUser['gender'][0] ?? 'M',
-                    "Address1" => $permanentAddress['address1'] ?? "",
-                    "Address2" => $permanentAddress['address2'] ?? "",
-                    "Address3" => $permanentAddress['landmark'] ?? "",
-                    "State" => $sState ?? "",
-                    "City" => $permanentAddress['city'] ?? "",
-                    "PinCode" => $permanentAddress['pincode'] ?? "",//manually 
-                    "GSTNo" => $gstno ?? "",//in  case o=of corporate
-                    "TelephoneNo" => "",
-                    "ProposalType" => $sProposalType ?? "",
-                    "PolicyType" => $sPolicyType ?? "",//"MOT-PLT-009",//$sPolicyType,
-                    "DateOfBirth" => Carbon::createFromFormat('d-m-Y', $dob)->format('Y-m-d'),//$dob,//kyc dob
-                    "MobileNo" => $AuthUser['mobile'] ?? "",
-                    "FaxNo" => "",
-                    "EmailID" => $AuthUser['email'] ?? '',
-                    "POSAgentName" => "NANDITA TIWARI",//credential
-                    "POSAgentPanNo" => "BTYPB4567K",//up same
-                    "CoverNoteNo" => "",
-                    "CoverNoteDt" => "",
-                    "VehicleCode" => $sVehicleCode ?? "UL8066",
-                    "FirstRegDt" => $sRegdate ?? "",
-                    "VehicleType" => $VehicleType ?? "",
-                    "EngineNo" => $EngineNo ?? "",
-                    "ChassisNo" => $ChassisNo ?? "",
-                    "RegNo1" => $sRegNo1 ?? "",
-                    "RegNo2" => $sRegNo2 ?? "",
-                    "RegNo3" => $sRegNo3 ?? "",
-                    "RegNo4" => $sRegNo4 ?? "",
-                    "RTOCode" => $sRegNo1 ?? "" . '-' . $sRegNo2 ?? "",
-                    "IDV_of_Vehicle" => $nIdv ?? "",
-                    "Colour" => "",
-                    "VoluntaryExcess" => in_array('120', $aAddons) ? "1" : "0",    //$VoluntaryExcess??"",//skip
-                    "NoEmpCoverLL" => in_array('122', $aAddons) ? "1" : "0", //$NoEmpCoverLL??"",//skip
-                    "NoOfCleaner" => "",//skip
-                    "NoOfDriver" => "0",//skip
-                    "NoOfConductor" => "",//skip
-                    "VehicleMadeinindiaYN" => "N",
-                    "VehiclePurposeYN" => "",
-                    "NFPP_Employees" => "",
-                    "NFPP_OthThanEmp" => "",
-                    "LimitOwnPremiseYN" => "N",
-                    "Bangladesh" => ($Geographical == 1) ? "1" : "0",
-                    "Bhutan" => ($Geographical == 1) ? "1" : "0",
-                    "SriLanka" => ($Geographical == 1) ? "1" : "0",
-                    "Nepal" => ($Geographical == 1) ? "1" : "0",
-                    "Pakistan" => ($Geographical == 1) ? "1" : "0",
-                    "Maldives" => ($Geographical == 1) ? "1" : "0",
-                    "CNGKitYN" => array_key_exists('cng', $aResult) ? "Y" : "N",
-                    "CNGKitSI" => array_key_exists('cng', $aResult) ? $aResult['cng'] : '',
-                    "InBuiltCNGKit" => "0",
-                    "LimitedTPPDYN" => in_array('121', $aAddons) ? "1" : "0",//$LimitedTPPDYN??"",
-                    "DeTariff" => 0,
-                    "IMT23YN" => "",
-                    "BreakIn" => "NO",//----in expired case
-                    "PreInspectionReportYN" => "0",
-                    "PreInspection" => "",
-                    "FitnessCertificateno" => "",
-                    "FitnessValidupto" => "",
-                    "VehPermit" => "",
-                    "PermitNo" => "",
-                    "PAforUnnamedPassengerYN" => $PAforUnnamedPassenger ?? "0",
-                    "PAforUnnamedPassengerSI" => ($PAforUnnamedPassenger == 1) ? $PAforUnnamedamount : "0",
-                    "ElectricalaccessYN" => array_key_exists('electrical', $aResult) ? "Y" : "N",
-                    "ElectricalaccessSI" => array_key_exists('electrical', $aResult) ? $aResult['electrical'] : '',
-                    "ElectricalaccessRemarks" => "",
-                    "NonElectricalaccessYN" => array_key_exists('non-electrical', $aResult) ? "Y" : "N",
-                    "NonElectricalaccessSI" => array_key_exists('non-electrical', $aResult) ? $aResult['non-electrical'] : '',
-                    "NonElectricalaccessRemarks" => "",
-                    "PAPaidDriverConductorCleanerYN" => 0,
-                    "PAPaidDriverConductorCleanerSI" => 0,
-                    "PAPaidDriverCount" => "0",
-                    "PAPaidConductorCount" => "",
-                    "PAPaidCleanerCount" => "",
-                    "NomineeNameforPAOwnerDriver" => $aNominee['nomineename'] ?? "unknown",
-                    "NomineeAgeforPAOwnerDriver" => $aNominee['nomineedob'] ? date('Y') - (int) last(explode('-', $aNominee['nomineedob'])) : '28',
-                    "NomineeRelationforPAOwnerDriver" => $aNominee['nomineerelation'] ?? "BROTHER",
-                    "AppointeeNameforPAOwnerDriver" => $aNominee['appointeename'] ?? "",
-                    "AppointeeRelationforPAOwnerDriver" => $aNominee['appointeerelation'] ?? "",
-                    "LLtoPaidDriverYN" => in_array('116', $aAddons) ? "1" : "0",//$LLtoPaidDriverYN??"",
-                    "AntiTheftYN" => in_array('119', $aAddons) ? "1" : "0", //$AntiTheftYN??"",
-                    "PreviousPolicyNo" => $prevPolicyNo ?? "",    //"12345678",
-                    "PreviousInsurer" => $prevInsurCmpny ?? "",   //"Tata AIG General Insurance Co Ltd",
-                    "PreviousPolicyFromDt" => $sPrevexpfDate ?? "",
-                    "PreviousPolicyToDt" => $sPrevexptoDate ?? "",
-                    "PreviousPolicySI" => "",
-                    "PreviousPolicyClaimYN" => $claim ?? "",
-                    "PreviousPolicyUWYear" => "",
-                    "PreviousPolicyNCBPerc" => $claimper ?? "",
-                    "TRANSFEROFOWNER" => $transferOfowner ?? "",
-                    "PreviousPolicyType" => $sPrePolicyType ?? "",  //"MOT-PLT-009",
-                    "AddonPackage" => "",
-                    "NilDepreciationCoverYN" => in_array('101', $aAddons) ? "Y" : "N",
-                    "PreviousNilDepreciation" => in_array('101', $aAddons) ? "1" : "0",
-                    "HypothecationType" => array_key_exists('bankloantype', $HypothData) ? $HypothData['bankloantype'] : '',
-                    "HypothecationBankName" => "",
-                    "HypothecationAddress1" => "",
-                    "HypothecationAddress2" => "",
-                    "HypothecationAddress3" => "",
-                    "HypothecationAgreementNo" => "",
-                    "HypothecationCountry" => "INDIA",
-                    "HypothecationState" => "",
-                    "HypothecationCity" => "",
-                    "HypothecationPinCode" => "",
-                    "SpecifiedPersonField" => "",
-                    "PAOwnerDriverExclusion" => $PAcover ?? "0",
-                    "PAOwnerDriverExReason" => $pAcoverReason ?? "", //($PAcover == "0" || !$PAcover) ? $pAcoverReason : "",
-                    "CPAInsComp" => "",
-                    "CPAPolicyFmDt" => "",
-                    "CPAPolicyNo" => "",
-                    "CPAPolicyToDt" => "",
-                    "CPASumInsured" => "",
-                    "LossOfPersonBelongYN" => in_array('107', $aAddons) ? "Y" : "N",
-                    "SHRIMOTORPROTECTION_YN" => in_array('113', $aAddons) ? "Y" : "N",
-                    "MultiCarBenefitYN" => in_array('110', $aAddons) ? "Y" : "N",
-                    "DepDeductWaiverYN" => in_array('101', $aAddons) ? "Y" : "N",
-                    "DailyExpRemYN" => in_array('109', $aAddons) ? "Y" : "N",
-                    "RSACover" => in_array('102', $aAddons) ? "Y" : "N",
-                    "InvReturnYN" => in_array('106', $aAddons) ? "Y" : "N",
-                    "Eng_Protector" => in_array('104', $aAddons) ? "Y" : "N",
-                    "Consumables" => in_array('103', $aAddons) ? "Y" : "N",
-                    "EmergencyTranHotelExpRemYN" => in_array('108', $aAddons) ? "Y" : "N",
-                    "KeyReplacementYN" => in_array('111', $aAddons) ? "Y" : "N",
-                    "tpPolAddr" => $sRtocity ?? "Jaipur",
-                    "tpPolComp" => $tpInsurCmpny ?? "",
-                    "tpPolFmdt" => $sPretpfDate ?? "",
-                    "tpPolNo" => $nTpolicyNo ?? '',
-                    "tpPolTodt" => $sPretptoDate ?? "",
-                    "CKYC_NO" => "",
-                    "DOB" => $dob ?? "",
-                    "POI_Type" => "PAN",
-                    "POI_ID" => "AVSPV4566D",
-                    "POA_Type" => "PROOF OF POSSESSION OF AADHAR",
-                    "POA_ID" => "5380",
-                    "FatherName" => $aIdDetails['fathername'] ?? '',
-                    "MotherName" => $aIdDetails['fathername'] ?? '',
-                    "MaritalStatus" => "",
-                    "SpouseName" => "",
-                    "ResidentialStatus" => "",
-                    "PHYSICALPOLICY" => $aNominee['physicalpolicy'] ?? "0",
-                    "POI_DocumentFile" => $identityPhotoB64['based64'] ?? "",
-                    "POA_DocumentFile" => $addressPhotoB64['based64'] ?? "",
-                    "Insured_photo" => $insurePhotoB64['based64'] ?? "",
-                    "POI_DocumentExt" => $identityPhotoB64['extension'] ?? "",
-                    "POA_DocumentExt" => $addressPhotoB64['extension'] ?? "",
-                    "Insured_photoExt" => $insurePhotoB64['extension'] ?? "",
-                    "PANorForm60" => "PAN",
-                    "PanNo" => "AVSPV4566D",
-                    "Pan_Form60_Document" => $identityPhotoB64['based64'] ?? "",
-                    "Pan_Form60_Document_Ext" => $identityPhotoB64['extension'] ?? "",
-                    "Pan_Form60_Document_Name" => "1"
+                'objPolicyEntryETT' => [
+                    'ReferenceNo' => '123456',  // unique each request
+                    'ProdCode' => $sProdCode,
+                    'PolicyFromDt' => $PolicyFromDate ?? '',  // '02-05-2025',
+                    'PolicyToDt' => $PolicyToDate ?? '',  // "1-05-2026",
+                    'PolicyIssueDt' => $PolicyFromDate ?? '',  // '02-05-2025',
+                    'InsuredPrefix' => '1',  // mr/mrs
+                    'InsuredName' => $oJourneyData->name ?? '',  // name
+                    'Gender' => $AuthUser['gender'][0] ?? 'M',
+                    'Address1' => $permanentAddress['address1'] ?? '',
+                    'Address2' => $permanentAddress['address2'] ?? '',
+                    'Address3' => $permanentAddress['landmark'] ?? '',
+                    'State' => $sState ?? '',
+                    'City' => $permanentAddress['city'] ?? '',
+                    'PinCode' => $permanentAddress['pincode'] ?? '',  // manually
+                    'GSTNo' => $gstno ?? '',  // in  case o=of corporate
+                    'TelephoneNo' => '',
+                    'ProposalType' => $sProposalType ?? '',
+                    'PolicyType' => $sPolicyType ?? '',  // "MOT-PLT-009",//$sPolicyType,
+                    'DateOfBirth' => Carbon::createFromFormat('d-m-Y', $dob)->format('Y-m-d'),  // $dob,//kyc dob
+                    'MobileNo' => $AuthUser['mobile'] ?? '',
+                    'FaxNo' => '',
+                    'EmailID' => $AuthUser['email'] ?? '',
+                    'POSAgentName' => 'NANDITA TIWARI',  // credential
+                    'POSAgentPanNo' => 'BTYPB4567K',  // up same
+                    'CoverNoteNo' => '',
+                    'CoverNoteDt' => '',
+                    'VehicleCode' => $sVehicleCode ?? 'UL8066',
+                    'FirstRegDt' => $sRegdate ?? '',
+                    'VehicleType' => $VehicleType ?? '',
+                    'EngineNo' => $EngineNo ?? '',
+                    'ChassisNo' => $ChassisNo ?? '',
+                    'RegNo1' => $sRegNo1 ?? '',
+                    'RegNo2' => $sRegNo2 ?? '',
+                    'RegNo3' => $sRegNo3 ?? '',
+                    'RegNo4' => $sRegNo4 ?? '',
+                    'RTOCode' => $sRegNo1 ?? '' . '-' . $sRegNo2 ?? '',
+                    'IDV_of_Vehicle' => $nIdv ?? '',
+                    'Colour' => '',
+                    'VoluntaryExcess' => in_array('120', $aAddons) ? '1' : '0',  // $VoluntaryExcess??"",//skip
+                    'NoEmpCoverLL' => in_array('122', $aAddons) ? '1' : '0',  // $NoEmpCoverLL??"",//skip
+                    'NoOfCleaner' => '',  // skip
+                    'NoOfDriver' => '0',  // skip
+                    'NoOfConductor' => '',  // skip
+                    'VehicleMadeinindiaYN' => 'N',
+                    'VehiclePurposeYN' => '',
+                    'NFPP_Employees' => '',
+                    'NFPP_OthThanEmp' => '',
+                    'LimitOwnPremiseYN' => 'N',
+                    'Bangladesh' => ($Geographical == 1) ? '1' : '0',
+                    'Bhutan' => ($Geographical == 1) ? '1' : '0',
+                    'SriLanka' => ($Geographical == 1) ? '1' : '0',
+                    'Nepal' => ($Geographical == 1) ? '1' : '0',
+                    'Pakistan' => ($Geographical == 1) ? '1' : '0',
+                    'Maldives' => ($Geographical == 1) ? '1' : '0',
+                    'CNGKitYN' => array_key_exists('cng', $aResult) ? 'Y' : 'N',
+                    'CNGKitSI' => array_key_exists('cng', $aResult) ? $aResult['cng'] : '',
+                    'InBuiltCNGKit' => '0',
+                    'LimitedTPPDYN' => in_array('121', $aAddons) ? '1' : '0',  // $LimitedTPPDYN??"",
+                    'DeTariff' => 0,
+                    'IMT23YN' => '',
+                    'BreakIn' => 'NO',  // ----in expired case
+                    'PreInspectionReportYN' => '0',
+                    'PreInspection' => '',
+                    'FitnessCertificateno' => '',
+                    'FitnessValidupto' => '',
+                    'VehPermit' => '',
+                    'PermitNo' => '',
+                    'PAforUnnamedPassengerYN' => $PAforUnnamedPassenger ?? '0',
+                    'PAforUnnamedPassengerSI' => ($PAforUnnamedPassenger == 1) ? $PAforUnnamedamount : '0',
+                    'ElectricalaccessYN' => array_key_exists('electrical', $aResult) ? 'Y' : 'N',
+                    'ElectricalaccessSI' => array_key_exists('electrical', $aResult) ? $aResult['electrical'] : '',
+                    'ElectricalaccessRemarks' => '',
+                    'NonElectricalaccessYN' => array_key_exists('non-electrical', $aResult) ? 'Y' : 'N',
+                    'NonElectricalaccessSI' => array_key_exists('non-electrical', $aResult) ? $aResult['non-electrical'] : '',
+                    'NonElectricalaccessRemarks' => '',
+                    'PAPaidDriverConductorCleanerYN' => 0,
+                    'PAPaidDriverConductorCleanerSI' => 0,
+                    'PAPaidDriverCount' => '0',
+                    'PAPaidConductorCount' => '',
+                    'PAPaidCleanerCount' => '',
+                    'NomineeNameforPAOwnerDriver' => $aNominee['nomineename'] ?? 'unknown',
+                    'NomineeAgeforPAOwnerDriver' => $aNominee['nomineedob'] ? date('Y') - (int) last(explode('-', $aNominee['nomineedob'])) : '28',
+                    'NomineeRelationforPAOwnerDriver' => $aNominee['nomineerelation'] ?? 'BROTHER',
+                    'AppointeeNameforPAOwnerDriver' => $aNominee['appointeename'] ?? '',
+                    'AppointeeRelationforPAOwnerDriver' => $aNominee['appointeerelation'] ?? '',
+                    'LLtoPaidDriverYN' => in_array('116', $aAddons) ? '1' : '0',  // $LLtoPaidDriverYN??"",
+                    'AntiTheftYN' => in_array('119', $aAddons) ? '1' : '0',  // $AntiTheftYN??"",
+                    'PreviousPolicyNo' => $prevPolicyNo ?? '',  // "12345678",
+                    'PreviousInsurer' => $prevInsurCmpny ?? '',  // "Tata AIG General Insurance Co Ltd",
+                    'PreviousPolicyFromDt' => $sPrevexpfDate ?? '',
+                    'PreviousPolicyToDt' => $sPrevexptoDate ?? '',
+                    'PreviousPolicySI' => '',
+                    'PreviousPolicyClaimYN' => $claim ?? '',
+                    'PreviousPolicyUWYear' => '',
+                    'PreviousPolicyNCBPerc' => $claimper ?? '',
+                    'TRANSFEROFOWNER' => $transferOfowner ?? '',
+                    'PreviousPolicyType' => $sPrePolicyType ?? '',  // "MOT-PLT-009",
+                    'AddonPackage' => '',
+                    'NilDepreciationCoverYN' => in_array('101', $aAddons) ? 'Y' : 'N',
+                    'PreviousNilDepreciation' => in_array('101', $aAddons) ? '1' : '0',
+                    'HypothecationType' => array_key_exists('bankloantype', $HypothData) ? $HypothData['bankloantype'] : '',
+                    'HypothecationBankName' => '',
+                    'HypothecationAddress1' => '',
+                    'HypothecationAddress2' => '',
+                    'HypothecationAddress3' => '',
+                    'HypothecationAgreementNo' => '',
+                    'HypothecationCountry' => 'INDIA',
+                    'HypothecationState' => '',
+                    'HypothecationCity' => '',
+                    'HypothecationPinCode' => '',
+                    'SpecifiedPersonField' => '',
+                    'PAOwnerDriverExclusion' => $PAcover ?? '0',
+                    'PAOwnerDriverExReason' => $pAcoverReason ?? '',  // ($PAcover == "0" || !$PAcover) ? $pAcoverReason : "",
+                    'CPAInsComp' => '',
+                    'CPAPolicyFmDt' => '',
+                    'CPAPolicyNo' => '',
+                    'CPAPolicyToDt' => '',
+                    'CPASumInsured' => '',
+                    'LossOfPersonBelongYN' => in_array('107', $aAddons) ? 'Y' : 'N',
+                    'SHRIMOTORPROTECTION_YN' => in_array('113', $aAddons) ? 'Y' : 'N',
+                    'MultiCarBenefitYN' => in_array('110', $aAddons) ? 'Y' : 'N',
+                    'DepDeductWaiverYN' => in_array('101', $aAddons) ? 'Y' : 'N',
+                    'DailyExpRemYN' => in_array('109', $aAddons) ? 'Y' : 'N',
+                    'RSACover' => in_array('102', $aAddons) ? 'Y' : 'N',
+                    'InvReturnYN' => in_array('106', $aAddons) ? 'Y' : 'N',
+                    'Eng_Protector' => in_array('104', $aAddons) ? 'Y' : 'N',
+                    'Consumables' => in_array('103', $aAddons) ? 'Y' : 'N',
+                    'EmergencyTranHotelExpRemYN' => in_array('108', $aAddons) ? 'Y' : 'N',
+                    'KeyReplacementYN' => in_array('111', $aAddons) ? 'Y' : 'N',
+                    'tpPolAddr' => $sRtocity ?? 'Jaipur',
+                    'tpPolComp' => $tpInsurCmpny ?? '',
+                    'tpPolFmdt' => $sPretpfDate ?? '',
+                    'tpPolNo' => $nTpolicyNo ?? '',
+                    'tpPolTodt' => $sPretptoDate ?? '',
+                    'CKYC_NO' => '',
+                    'DOB' => $dob ?? '',
+                    'POI_Type' => 'PAN',
+                    'POI_ID' => 'AVSPV4566D',
+                    'POA_Type' => 'PROOF OF POSSESSION OF AADHAR',
+                    'POA_ID' => '5380',
+                    'FatherName' => $aIdDetails['fathername'] ?? '',
+                    'MotherName' => $aIdDetails['fathername'] ?? '',
+                    'MaritalStatus' => '',
+                    'SpouseName' => '',
+                    'ResidentialStatus' => '',
+                    'PHYSICALPOLICY' => $aNominee['physicalpolicy'] ?? '0',
+                    'POI_DocumentFile' => $identityPhotoB64['based64'] ?? '',
+                    'POA_DocumentFile' => $addressPhotoB64['based64'] ?? '',
+                    'Insured_photo' => $insurePhotoB64['based64'] ?? '',
+                    'POI_DocumentExt' => $identityPhotoB64['extension'] ?? '',
+                    'POA_DocumentExt' => $addressPhotoB64['extension'] ?? '',
+                    'Insured_photoExt' => $insurePhotoB64['extension'] ?? '',
+                    'PANorForm60' => 'PAN',
+                    'PanNo' => 'AVSPV4566D',
+                    'Pan_Form60_Document' => $identityPhotoB64['based64'] ?? '',
+                    'Pan_Form60_Document_Ext' => $identityPhotoB64['extension'] ?? '',
+                    'Pan_Form60_Document_Name' => '1'
                 ]
             ]);
             //     return[
-            //     "asdf" => $postdata 
+            //     "asdf" => $postdata
             //  ];
-            //return $postdata;
-            //dd($postdata);
+            // return $postdata;
+            // dd($postdata);
             \Log::info(['privateCarProposal_shriram_Request_Log' => $postdata]);
             curl_setopt_array($curl, array(
                 CURLOPT_URL => $url,
@@ -2012,8 +1988,8 @@ class ShriramService
                 CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => $postdata,
                 CURLOPT_HTTPHEADER => array(
-                    'Username: ' . self::$Username, // Correct format
-                    'Password: ' . self::$Password, // Correct format
+                    'Username: ' . self::$Username,  // Correct format
+                    'Password: ' . self::$Password,  // Correct format
                     'Content-Type: application/json',
                     'Accept: application/json',
                     'Cookie: ASP.NET_SessionId=3h5sofst43z4xtc5kse54rjy'
@@ -2021,23 +1997,22 @@ class ShriramService
             ));
             $response = curl_exec($curl);
             //  return[
-            //     "asdf" => $response 
+            //     "asdf" => $response
             //  ];
-            Logfunction($userId, "shriram", $response, $postdata, "car");
+            Logfunction($userId, 'shriram', $response, $postdata, 'car');
             \Log::info(['privateCarProposal_shriram_response' => $response]);
 
             curl_close($curl);
             return $response;
-
         } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
                 'msg' => $e->getMessage()
             ]);
-            //return $e->getMessage() . 'errorcode:privateCarProposal';
+            // return $e->getMessage() . 'errorcode:privateCarProposal';
         }
-
     }
+
     public static function PVVCProposal()
     {
         $curl = curl_init();
@@ -2443,17 +2418,18 @@ class ShriramService
     {
         return view('front.motor.car.vendor.shriram.payment');
     }
+
     public static function PaymentStatus($nProposalNo, $nQuoteId)
     {
         $url = 'https://novaapi.shriramgi.com/NovaWS/novaServices/WebAggregator.svc/RestService/getPaymentStatus';
-        //$url = 'http://novaapiuat.shriramgi.com/UATNovaWS/novaServices/WebAggregator.svc/RestService/getPaymentStatus';
+        // $url = 'http://novaapiuat.shriramgi.com/UATNovaWS/novaServices/WebAggregator.svc/RestService/getPaymentStatus';
 
         $curl = curl_init();
         $postdata = json_encode([
-            "ProposalNo" => $nProposalNo,
-            "QuoteID" => $nQuoteId
+            'ProposalNo' => $nProposalNo,
+            'QuoteID' => $nQuoteId
         ]);
-        //dd($postdata);
+        // dd($postdata);
         curl_setopt_array($curl, array(
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
@@ -2470,7 +2446,7 @@ class ShriramService
             ),
         ));
         $response = curl_exec($curl);
-        //dd($response);
+        // dd($response);
         curl_close($curl);
         echo $response;
     }

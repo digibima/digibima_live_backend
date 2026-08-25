@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\{User, Policy, DigiPayment, MasterVendor,PersonalAccessToken};
+use App\Models\{User, Policy, DigiPayment, MasterVendor, PersonalAccessToken};
 use App\Services\WhatsappServive;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -20,64 +20,63 @@ class InsuranceUploadController
         $this->whatsappService = $whatsappService;
     }
 
-public function Login(Request $request)
-{
-    try {
-        $request->validate([
-            'mobile' => 'required'
-        ]);
+    public function Login(Request $request)
+    {
+        try {
+            $request->validate([
+                'mobile' => 'required'
+            ]);
 
-        $mobile = encodeMobile($request->mobile);
+            $mobile = encodeMobile($request->mobile);
 
-        $user = User::where('mobile', $mobile)
-            ->whereIn('role', ['admin', 'employee'])
-            ->first();
+            $user = User::where('mobile', $mobile)
+                ->whereIn('role', ['admin', 'employee'])
+                ->first();
 
-        if (!$user) {
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Admin or Employee not registered or not authorized',
+                ], 401);
+            }
+
+            // Authorization header se existing token check
+            $headerToken = $request->header('Authorization');
+
+            $existingToken = null;
+
+            if (!empty($headerToken)) {
+                $existingToken = PersonalAccessToken::findToken($headerToken);
+            }
+
+            // Same user ka token already hai
+            if (
+                $existingToken &&
+                $existingToken->tokenable_id == $user->id
+            ) {
+                $token = $headerToken;
+            } else {
+                // New token create
+                $token = $user->createToken('insurance-upload')->plainTextToken;
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Logged in successfully',
+                'token' => $token,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'role' => $user->role,
+                ],
+            ]);
+        } catch (\Throwable $e) {
             return response()->json([
                 'status' => false,
-                'message' => 'Admin or Employee not registered or not authorized',
-            ], 401);
+                'message' => $e->getMessage(),
+            ], 500);
         }
-
-        // Authorization header se existing token check
-        $headerToken = $request->header('Authorization');
-
-        $existingToken = null;
-
-        if (!empty($headerToken)) {
-            $existingToken = PersonalAccessToken::findToken($headerToken);
-        }
-
-        // Same user ka token already hai
-        if (
-            $existingToken &&
-            $existingToken->tokenable_id == $user->id
-        ) {
-            $token = $headerToken;
-        } else {
-            // New token create
-            $token = $user->createToken('insurance-upload')->plainTextToken;
-        }
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Logged in successfully',
-            'token' => $token,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'role' => $user->role,
-            ],
-        ]);
-
-    } catch (\Throwable $e) {
-        return response()->json([
-            'status' => false,
-            'message' => $e->getMessage(),
-        ], 500);
     }
-}
 
     public function UploadPolicy(Request $request)
     {
@@ -150,13 +149,13 @@ public function Login(Request $request)
                 : $originalName;
             $fileName = Str::uuid() . '_' . Str::slug($fileName, '_');
             $fileName .= '.' . $extension;
-            $filePath = Storage::disk('minio')->putFileAs(
+            $filePath = Storage::disk('public')->putFileAs(
                 'policy',
                 $file,
                 $fileName
             );
 
-            $url = Storage::disk('minio')->url($filePath);
+            $url = Storage::disk('public')->url($filePath);
             $policy = new Policy();
             $policy->userid = $userId;
             $policy->file = $filePath;
@@ -247,41 +246,40 @@ public function Login(Request $request)
     public function ReadPolicy() {}
     public function DeletePolicy() {}
 
-public function Logout(Request $request)
-{
-    try {
-        $token = $request->header('Authorization');
+    public function Logout(Request $request)
+    {
+        try {
+            $token = $request->header('Authorization');
 
-        if (empty($token)) {
+            if (empty($token)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'token not provided.'
+                ], 401);
+            }
+
+            $isToken = PersonalAccessToken::findToken($token);
+
+            if (!$isToken) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Invalid token or already logout.'
+                ], 401);
+            }
+
+            $userId = $isToken->tokenable_id;
+
+            $isToken->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Logged out successfully.'
+            ]);
+        } catch (\Throwable $e) {
             return response()->json([
                 'status' => false,
-                'message' => 'token not provided.'
-            ], 401);
+                'message' => $e->getMessage()
+            ], 500);
         }
-
-        $isToken = PersonalAccessToken::findToken($token);
-
-        if (!$isToken) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Invalid token or already logout.'
-            ], 401);
-        }
-
-        $userId = $isToken->tokenable_id;
-
-        $isToken->delete();
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Logged out successfully.'
-        ]);
-
-    } catch (\Throwable $e) {
-        return response()->json([
-            'status' => false,
-            'message' => $e->getMessage()
-        ], 500);
     }
-}
 }
