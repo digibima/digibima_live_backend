@@ -3,8 +3,9 @@ namespace App\Services\Api;
 
 use App\Http\Controllers\Api\front\motor\Vendor\shriram\Bike\ShriramBikeController;
 use App\Http\Controllers\Api\front\motor\Vendor\shriram\Car\ShriramCarController;
+use App\Models\Master\Shriram as MasterVehicle;
 use App\Models\Shriram\{Shriram_Pincode, Shriram_planCheckout, Shriram_RTO_Master, Shriram_Prev_insurence, Shriram_Vehicle_Master};
-use App\Models\{Master_Vehicle_Data as DataModel, MasterAPI, User, MotorJourney, MasterVendor, VendorMotor, MasterMotor, UserMotorDescription, Vehicle_Info, ResponseLog};
+use App\Models\{Master_Vehicle_Data as DataModel, MasterAPI, User, MotorJourney, MasterVendor, VendorMotor, MasterMotor, UserMotorDescription, Vehicle_Info};
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Auth, Cache};
@@ -18,6 +19,7 @@ class ShriramService
     {
         self::$Username = getconstant('MOTOR.SHRIRAM.CREDENTIAL.USERNAME');
         self::$Password = getconstant('MOTOR.SHRIRAM.CREDENTIAL.PASSWORD');
+        // dd(self::$Username,self::$Password);
     }
 
     public static function genRandomNumber()
@@ -58,38 +60,31 @@ class ShriramService
             $LimitedTPPDYN = null;
             $VoluntaryExcess = null;
             $AntiTheftYN = null;
-            $PAforUnnamedPassenger = null;
+            $PAforUnnamedPassengerYN = null;
             $Geographical = null;
+            $VehicleType = null;
             $AuthUser = $user->toArray();
             $aData = DataModel::where('userid', $userId)->first();
             $aBikedata = json_decode($aData->knowbike_reg_details, true) ?? [];
             $aNewBikedata = json_decode($aData->newbike_reg_details, true) ?? [];
             $PAcover = null;
             $pAcoverReason = null;
+            // dd(session('motortype'));
             $sRegNumber = '';
             $sRegNo2 = '';
             $sRegNo3 = '';
             $sRegNo1 = '';
             $sRegNo4 = '';
-            $VehicleType = null;
             $cachemotortype = 'cache_motortype_' . $userId;
             $cachebikePolicyexp = 'cache_bikepolicyexp_' . $userId;
             $PAforUnnamedamount = json_decode($aData->bikeaddonvalue, true);
             $PAforUnnamedamount = !empty($PAforUnnamedamount) ? $PAforUnnamedamount : '0';
-            $dRegDate = $aData->knowbike_reg_details ? json_decode($aData->knowbike_reg_details, true)['bikeregdate'] : date('d-m-Y');
-            $regDate = \DateTime::createFromFormat('d-m-Y', $dRegDate);
-            $addonAgeLimit = [
-                '101' => 4,
-                '103' => 4,
-                '104' => 4,
-                '107' => 12,
-                '109' => 12,
-                '106' => 1
-            ];
+            // $aAddons = json_decode($aData->bikeaddon, true) ?? [];
             $aBikeAddon = is_string($aData->bikeaddon)
                 ? json_decode($aData->bikeaddon, true)
                 : (array) $aData->bikeaddon;
 
+            // Pick based on which exists
             $aAddons = !empty($aBikeAddon['tpselectedaddon'])
                 ? $aBikeAddon['tpselectedaddon']
                 : (
@@ -101,30 +96,15 @@ class ShriramService
                                 : []
                         )
                 );
-            $validAddons = [];
-
-            foreach ($aAddons as $addonId) {
-                $addonId = (string) $addonId;
-                if (isset($addonAgeLimit[$addonId])) {
-                    $maxyears = $addonAgeLimit[$addonId];
-                    if (ValidateAddonAge($regDate, $maxyears)) {
-                        $validAddons[] = $addonId;
-                    }
-                } else {
-                    $validAddons[] = $addonId;
-                }
-            }
-
-            $aAddons = $validAddons;
-            // return [
-            //     "valid" => $aAddons
-            // ];
             $aResult = [];
             if (!empty($aAccessories)) {
                 foreach ($aAccessories as $item) {
                     $aResult[$item['type']] = $item['amount'];
                 }
             }
+            // return[
+            //     "asdd" => GetCache($cachebikePolicyexp)
+            // ];
             if (GetCache($cachemotortype) == 'newbike') {
                 if ($aNewBikedata['under'] == 'company') {
                     $PAcover = '0';
@@ -133,6 +113,7 @@ class ShriramService
                     $PAcover = $aData->pacover;
                     if ($PAcover == 0) {
                         $pAcoverReason = json_decode($aData->pacover_reason, true);
+                        // $ncoverReason = array_keys($pAcoverReason)[0];
                         $ncoverReason = is_array($pAcoverReason) ? (array_keys($pAcoverReason)[0] ?? []) : [];
                         if ($ncoverReason == '1') {
                             $pAcoverReason = 'PA_TYPE1';
@@ -159,6 +140,7 @@ class ShriramService
                     $PAcover = $aData->pacover;
                     if ($PAcover == 0) {
                         $pAcoverReason = json_decode($aData->pacover_reason, true);
+                        // $ncoverReason = array_keys($pAcoverReason)[0];
                         $ncoverReason = is_array($pAcoverReason) ? (array_keys($pAcoverReason)[0] ?? []) : [];
                         if ($ncoverReason == '1') {
                             $pAcoverReason = 'PA_TYPE1';
@@ -180,6 +162,8 @@ class ShriramService
                 $sRegNo3 = substr($sRegNumber, 4, 2);  // k
                 $sRegNo4 = substr($sRegNumber, 6, 4);  // k
             }
+            // dd($sRegNumber);
+
             if (GetCache($cachemotortype) == 'knowbike') {
                 if ($aBikedata['prepolitype'] == 'odonly') {
                     $sPrePolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.OWNDAMAGE');
@@ -187,6 +171,7 @@ class ShriramService
                     $sPrevexpfDate = $aBikedata['odfromdate'];  // k
                     $sPretpfDate = $aBikedata['odtpfromdate'];
                     $sPretptoDate = $aBikedata['odtptodate'];
+                    // $nTpolicyNo = array_key_exists('tppolicynumber', $prevPolicydata) ? $prevPolicydata['tppolicynumber'] : '';
                     $date = Carbon::createFromFormat('d-m-Y', $sPrevexptoDate);
                     $PolicyFromDate = $date->addDay()->format('d-m-Y');
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
@@ -196,6 +181,7 @@ class ShriramService
                     $sPrevexpfDate = $aBikedata['bdfromdate'];  // k
                     $sPretpfDate = $aBikedata['bdtpfromdate'];
                     $sPretptoDate = $aBikedata['bdtptodate'];
+                    // $nTpolicyNo = array_key_exists('tppolicynumber', $prevPolicydata) ? $prevPolicydata['tppolicynumber'] : '';
                     $date = Carbon::createFromFormat('d-m-Y', $sPrevexptoDate);
                     $PolicyFromDate = $date->addDay()->format('d-m-Y');
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
@@ -206,6 +192,7 @@ class ShriramService
                     $date = Carbon::createFromFormat('d-m-Y', $sPrevexptoDate);
                     $PolicyFromDate = $date->addDay()->format('d-m-Y');
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
+                    // dd($PolicyFromDate,$PolicyToDate);
                 } elseif ($aBikedata['prepolitype'] == 'tponly') {
                     $sPrePolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.LIABILITY');
                     $sPrevexptoDate = $aBikedata['tptodate'];  // k
@@ -213,11 +200,14 @@ class ShriramService
                     $date = Carbon::createFromFormat('d-m-Y', $sPrevexptoDate);
                     $PolicyFromDate = $date->addDay()->format('d-m-Y');
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
+                    // dd($PolicyFromDate,$PolicyToDate);
                 }
             }
 
             $oJourneyData = MotorJourney::where('userid', $userId)->where('is_bike', '1')->first();
-            $permanentAddress = isset($oJourneyData->permanent_address) && json_decode($oJourneyData->permanent_address, true) ? json_decode($oJourneyData->permanent_address, true) : [];
+
+            $permanentAddress = isset($oJourneyData->permanent_address) &&
+                json_decode($oJourneyData->permanent_address, true) ? json_decode($oJourneyData->permanent_address, true) : [];
             $pincode = $user->pincode;
             $state = Shriram_Pincode::where('PC_CODE', $pincode)->first();
             if (!$state) {
@@ -226,6 +216,7 @@ class ShriramService
                     'message' => 'Pincode not available for this service.'
                 ];
             }
+            // dd($pincode,$state);
             $sState = $state->STATE;
             if (GetCache($cachemotortype) == 'knowbike') {
                 $firstregdate = array_key_exists('bikeregdate', $aBikedata) ? $aBikedata['bikeregdate'] : '';
@@ -233,6 +224,7 @@ class ShriramService
                 $claimper = array_key_exists('bonus-button', $aBikedata) ? $aBikedata['bonus-button'] : '0';
                 $transferOfowner = array_key_exists('ownershiptoggle', $aBikedata) ? $aBikedata['ownershiptoggle'] : '0';
                 $oModel = Shriram_Vehicle_Master::where('id', $aBikedata['model'])->first();
+                // dd($aBikedata,$firstregdate,$sModel);
             }
             if (GetCache($cachemotortype) == 'newbike') {
                 $aNewBikedata = json_decode($aData->newbike_reg_details, true);
@@ -243,6 +235,7 @@ class ShriramService
             if ($oModel) {
                 $sVehicleCode = $oModel->VEHICLE_CODE;
             }
+            // $url = MasterAPI::where('apicode', '115')->first()->apistring;
             $sProdCode = getconstant('MOTOR.SHRIRAM.PRODUCTTYPE.TWOWHEELER');
             $sPolicyType = '';
             $sProposalType = '';
@@ -252,6 +245,7 @@ class ShriramService
                 if ($nPlanType == '2') {
                     $sPolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.BUNDLED');
                     $PolicyFromDate = $today->format('d-m-Y');
+                    // $today = Carbon::today();
                     $PolicyToDate = $today->addYears(3)->subDay()->format('d-m-Y');
                     $NilDepreciationCoverYN = in_array('101', $aAddons) ? 'Y' : 'N';
                     $RSACover = in_array('102', $aAddons) ? 'Y' : 'N';
@@ -274,8 +268,8 @@ class ShriramService
                 }
             }
             if (GetCache($cachemotortype) == 'knowbike') {
-                $VehicleType = 'U';
                 $sProposalType = getconstant('MOTOR.SHRIRAM.PROPOSALTYPE.MARKETRENEWAL');
+                $VehicleType = 'U';
                 if ($nPlanType == '1') {
                     $sPolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.OWNDAMAGE');
                     $NilDepreciationCoverYN = in_array('101', $aAddons) ? 'Y' : 'N';
@@ -293,7 +287,7 @@ class ShriramService
                     $LimitedTPPDYN = in_array('121', $aAddons) ? '1' : '0';
                     $VoluntaryExcess = in_array('120', $aAddons) ? '1' : '0';
                     $PAPaidDriverConductorCleaner = 1;
-                    $Geographical = in_array('117', $aAddons) ? 1 : '0';
+                    $Geographical = in_array('118', $aAddons) ? 1 : '0';
                     $PAforUnnamedPassenger = in_array('115', $aAddons) ? '1' : '0';
                 }
                 if ($nPlanType == '2') {
@@ -342,11 +336,18 @@ class ShriramService
             } else {
                 $sRtocity = '';
             }
+            // $idv = Cache::store('mysql_cache')->get("user_" . $userId . "_bikeidv");
             $cachebikeidv = 'cache_' . $userId . '_bikeidv';
             $idv = GetCache($cachebikeidv);
-            // $url = MasterAPI::where('apicode', '115')->first()->apistring;
-            $url = 'https://nsecureapi.shriramgi.com/NOVADIGITAL/SVS_Services/PolicyGeneration.svc/RestService/GetQuote';
+            $url = MasterAPI::where('apicode', '115')->first()->apistring;
             $curl = curl_init();
+            //  return[
+            //     "asdf"=>GetCache($cachebikePolicyexp),
+            //     "PolicyFromDate"=>$PolicyFromDate,
+            //     "PolicyToDate"=>$PolicyToDate
+            // ];
+            // dd($sProposalType,$nPlanType,$sRegNo4,$sRegNo3, $sRegNo2,$sRegNo1);
+
             $jPostField = json_encode([
                 'objPolicyEntryETT' => [
                     'ReferenceNo' => '',
@@ -417,8 +418,8 @@ class ShriramService
                     'FitnessValidupto' => '',
                     'VehPermit' => '',
                     'PermitNo' => '',
-                    'PAforUnnamedPassengerYN' => $PAforUnnamedPassenger ?? '0',
-                    'PAforUnnamedPassengerSI' => ($PAforUnnamedPassenger == 1) ? $PAforUnnamedamount : '',
+                    'PAforUnnamedPassengerYN' => $PAforUnnamedPassengerYN ?? '0',
+                    'PAforUnnamedPassengerSI' => ($PAforUnnamedPassengerYN == 1) ? $PAforUnnamedamount : '',
                     'ElectricalaccessYN' => array_key_exists('electrical', $aResult) ? 'Y' : 'N',
                     'ElectricalaccessSI' => array_key_exists('electrical', $aResult) ? $aResult['electrical'] : '',
                     'ElectricalaccessRemarks' => '',
@@ -484,8 +485,6 @@ class ShriramService
             //    "asd"=>$jPostField
             // ];
             // dd($jPostField);
-            \Log::info(['generateBikeQuote_shriram' => $jPostField]);
-
             curl_setopt_array($curl, array(
                 CURLOPT_URL => $url,
                 CURLOPT_RETURNTRANSFER => true,
@@ -497,19 +496,21 @@ class ShriramService
                 CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => $jPostField,
                 CURLOPT_HTTPHEADER => array(
-                    'Username: DIGIBIMA',
+                    'Username: NiveshIns',
                     'Password: shriram@1',
                     'Content-Type: application/json',
                     'Accept: application/json',
                     'Cookie: ASP.NET_SessionId=pprgtlk4esr1orqh5aptertx'
                 ),
             ));
+
             $response = curl_exec($curl);
-            \Log::info(['generateBikeQuote_shriram' => $response]);
+            // dd($response);
+            // \Log::info(['generateBikeQuote_shriram' => $response]);
             curl_close($curl);
             return $response;
         } catch (\Exception $e) {
-            return $e->getMessage();
+            return ErrMessage($e);
         }
     }
 
@@ -543,12 +544,13 @@ class ShriramService
             $nTpolicyNo = null;
             $sTpInsurer = null;
             $prevPolicyNo = null;
-            $VehicleType = null;
             $sRegdate = '';
+            $VehicleType = null;
             $cachebikePolicyexp = 'cache_bikepolicyexp_' . $userId;
-            $PAforUnnamedamount = json_decode($aData->bikeaddonvalue, true);
+            // $sPrevexptoDate = $aBikedata['comptodate']; //k
+            $PAforUnnamedamount = json_decode($aData->caraddonvalue, true);
             $PAforUnnamedamount = !empty($PAforUnnamedamount) ? $PAforUnnamedamount : '0';
-            $aVehicledetails = json_decode($oJourneyData->vehicle_details, true);
+
             $aResult = [];
             if (!empty($aAccessories)) {
                 foreach ($aAccessories as $item) {
@@ -558,7 +560,9 @@ class ShriramService
             $PAcover = $aData->pacover;
             if ($PAcover == 0) {
                 $pAcoverReason = json_decode($aData->pacover_reason, true);
+                // $ncoverReason = array_keys($pAcoverReason)[0];
                 $ncoverReason = is_array($pAcoverReason) ? (array_keys($pAcoverReason)[0] ?? []) : [];
+
                 if ($ncoverReason == '1') {
                     $pAcoverReason = 'PA_TYPE1';
                 }
@@ -571,6 +575,8 @@ class ShriramService
             } else {
                 $pAcoverReason = '';
             }
+
+            // dd(session('motortype'));
             $sRegdate = $aBikedata['bikeregdate'] ?? date('d-m-Y');
             $cachemotortype = 'cache_motortype_' . $userId;
             $cacheunder = 'cache_under_' . $userId;
@@ -606,7 +612,9 @@ class ShriramService
                     $date = Carbon::createFromFormat('d-m-Y', $sPrevexptoDate);
                     $PolicyFromDate = $date->addDay()->format('d-m-Y');
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
+                    // dd($sPrevexptoDate);
                 } elseif ($aBikedata['prepolitype'] == 'tponly') {
+                    // dd($aBikedata);
                     $sPrePolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.LIABILITY');
                     $sPrevexptoDate = $aBikedata['tptodate'];  // k
                     $sPrevexpfDate = $aBikedata['tpfromdate'];  // k
@@ -615,6 +623,7 @@ class ShriramService
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
                 }
             }
+            // $oVehicleInfo = Vehicle_Info::where('MODEL_DESCRIPTION', $sModel)->first();
             $sRegNumber = '';
             $sRegNo2 = '';
             $sRegNo3 = '';
@@ -633,10 +642,12 @@ class ShriramService
                 $sRegNo4 = substr($sRegNumber, 6, 4);  // k
                 $oModel = Shriram_Vehicle_Master::where('id', $aBikedata['model'])->first();
             }
+
             $sVehicleCode = '';
             if ($oModel) {
                 $sVehicleCode = $oModel->VEHICLE_CODE;
             }
+            // dd($sRegNumber);
             $oObj = new ShriramBikeController();
             $aDocument = UserMotorDescription::where('userid', $userId)->first('document');
             $filePath = json_decode($aDocument->document, true);
@@ -644,28 +655,18 @@ class ShriramService
             $identityPhotoB64 = self::FileIntoBase64($filePath['identity']['identityfront']);
             $addressPhotoB64 = self::FileIntoBase64($filePath['address']['addressfront']);
             self::initlize();
-            // $url = MasterAPI::where('apicode', '116')->first()->apistring;
-            $url = 'https://nsecureapi.shriramgi.com/NOVADIGITAL/SVS_Services/PolicyGeneration.svc/RestService/GenerateProposal';
+            $url = MasterAPI::where('apicode', '116')->first()->apistring;
             $aNominee = $oJourneyData->nominee_details ? jdec($oJourneyData->nominee_details) : [];
             $permanentAddress = json_decode($oJourneyData->permanent_address, true) ?? [];
             $pincode = $permanentAddress['pincode'];
             $state = Shriram_Pincode::where('PC_CODE', $pincode)->first();
             $sState = $state->STATE;
             $nPlanType = $aData->bike_plan_type;
-            $dRegDate = $aData->knowbike_reg_details ? json_decode($aData->knowbike_reg_details, true)['bikeregdate'] : date('d-m-Y');
-            $regDate = \DateTime::createFromFormat('d-m-Y', $dRegDate);
-            $addonAgeLimit = [
-                '101' => 4,
-                '103' => 4,
-                '104' => 4,
-                '107' => 12,
-                '109' => 12,
-                '106' => 1
-            ];
             $aBikeAddon = is_string($aData->bikeaddon)
                 ? json_decode($aData->bikeaddon, true)
                 : (array) $aData->bikeaddon;
 
+            // Pick based on which exists
             $aAddons = !empty($aBikeAddon['tpselectedaddon'])
                 ? $aBikeAddon['tpselectedaddon']
                 : (
@@ -677,27 +678,20 @@ class ShriramService
                                 : []
                         )
                 );
-            $validAddons = [];
-            foreach ($aAddons as $addonId) {
-                $addonId = (string) $addonId;
-                if (isset($addonAgeLimit[$addonId])) {
-                    $maxyears = $addonAgeLimit[$addonId];
-                    if (ValidateAddonAge($regDate, $maxyears)) {
-                        $validAddons[] = $addonId;
-                    }
-                } else {
-                    $validAddons[] = $addonId;
-                }
-            }
-            $aAddons = $validAddons;
+            // $aAddons = json_decode($aData->bikeaddon, true) ?? [];
+            // $aCacheData = json_decode(Cache::store('mysql_cache')->get("user_" . $userId . "_bikequote_key"), true) ?? [];
+            // dd($aCacheData,$aAddons);
+            // $aGetData = $oObj->getCacheBikeQuote($request, $aCacheData[getconstant("MOTOR.SHRIRAM.KEY")][$nPlanType]);
+            // $nIdv = $aGetData['data']['idv'];
             $cachebikeidv = 'cache_' . $userId . '_bikeidv';
             $nIdv = GetCache($cachebikeidv);
             $randomValue = self::genRandomNumber();
-            $EngineNo = $aVehicledetails['Enginenumber'];  // "GDFG59D4GD6546D" . $randomValue;
-            $ChassisNo = $aVehicledetails['Chassisnumber'];  // "GDF45GDFGD4G56D" . $randomValue;
+            $EngineNo = 'GDFG59D4GD6546D' . $randomValue;  // $aVehicledetails['Enginenumber'];
+            $ChassisNo = 'GDF45GDFGD4G56D' . $randomValue;  // $aVehicledetails['Chassisnumber'];
             $sProdCode = getconstant('MOTOR.SHRIRAM.PRODUCTTYPE.TWOWHEELER');
             $sPolicyType = '';
             $sProposalType = '';
+
             if (GetCache($cachemotortype) == 'newbike') {
                 $VehicleType = 'W';
                 $sProposalType = getconstant('MOTOR.SHRIRAM.PROPOSALTYPE.FRESHPROPOSAL');
@@ -709,6 +703,7 @@ class ShriramService
                     $PAcover = $aData->pacover;
                     if ($PAcover == 0) {
                         $pAcoverReason = json_decode($aData->pacover_reason, true);
+                        // $ncoverReason = array_keys($pAcoverReason)[0];
                         $ncoverReason = is_array($pAcoverReason) ? (array_keys($pAcoverReason)[0] ?? []) : [];
                         if ($ncoverReason == '1') {
                             $pAcoverReason = 'PA_TYPE1';
@@ -741,12 +736,14 @@ class ShriramService
                     $PAcover = 0;
                     $pAcoverReason = 'PA_TYPE2';
                     $companydetails = json_decode($oJourneyData->company_details, true);
+                    // dd($companydetails);
                     $gstno = $companydetails['gstnumber'];
                 } else {
                     $PAcover = $aData->pacover;
                     $gstno = null;
                     if ($PAcover == 0) {
                         $pAcoverReason = json_decode($aData->pacover_reason, true);
+                        // $ncoverReason = array_keys($pAcoverReason)[0];
                         $ncoverReason = is_array($pAcoverReason) ? (array_keys($pAcoverReason)[0] ?? []) : [];
                         if ($ncoverReason == '1') {
                             $pAcoverReason = 'PA_TYPE1';
@@ -766,7 +763,7 @@ class ShriramService
                 $claimper = array_key_exists('bonus-button', $aBikedata) ? $aBikedata['bonus-button'] : '0';
                 $transferOfowner = array_key_exists('ownershiptoggle', $aBikedata) ? $aBikedata['ownershiptoggle'] : '0';
                 $sProposalType = getconstant('MOTOR.SHRIRAM.PROPOSALTYPE.MARKETRENEWAL');
-
+                // dd($aCardata);
                 if ($nPlanType == '1') {
                     $sPolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.OWNDAMAGE');
                     $Geographical = in_array('117', $aAddons) ? 1 : '0';
@@ -804,6 +801,11 @@ class ShriramService
                     ? $user->dob
                     : '29-04-2000');
 
+            // session()->put('productcode', $sProdCode);
+            // session()->put('proposaltype', $sProposalType);
+            // session()->put('policytpe', $sPolicyType);
+            // session()->put('plantype', $nPlanType);
+
             $cacheproductcode = 'cache_productcode_' . $userId;
             SetCache($cacheproductcode, $sProdCode);
             $cacheproposaltype = 'cache_proposaltype_' . $userId;
@@ -815,6 +817,12 @@ class ShriramService
 
             $curl = curl_init();
             $randomValue = self::genRandomNumber();
+            //    return[
+            //     "policy"=>GetCache($cachebikePolicyexp),
+            //     'PolicyFromDate'=>$PolicyFromDate,
+            //     'todate' => $PolicyToDate
+            //  ];
+            // dd($PolicyFromDate,$PolicyToDate);
             $postdata = json_encode([
                 'objPolicyEntryETT' => [
                     'ReferenceNo' => '123456',
@@ -832,10 +840,10 @@ class ShriramService
                     'City' => $permanentAddress['city'] ?? '',
                     'PinCode' => $pincode ?? $permanentAddress['pincode'],
                     'PanNo' => '',
-                    'GSTNo' => $gstno,
+                    'GSTNo' => null,
                     'TelephoneNo' => '',
                     'ProposalType' => $sProposalType ?? '',
-                    'PolicyType' => $sPolicyType ?? '',
+                    'PolicyType' => $sPolicyType ?? '',  // $sPolicyType,
                     'DateOfBirth' => Carbon::createFromFormat('d-m-Y', $dob)->format('Y-m-d') ?? '12-08-1998',
                     'MobileNo' => $AuthUser['mobile'] ?? '',
                     'FaxNo' => '',
@@ -978,7 +986,6 @@ class ShriramService
             //     "reee"=>$postdata
             // ];
             // dd($postdata);
-            \Log::info(['generateBikeProposal_shriram' => $postdata]);
             curl_setopt_array($curl, array(
                 CURLOPT_URL => $url,
                 CURLOPT_RETURNTRANSFER => true,
@@ -998,19 +1005,20 @@ class ShriramService
                 ),
             ));
             $response = curl_exec($curl);
+            // \Log::info(['generateBikeProposal_shriram' => $response]);
             Logfunction($userId, 'shriram', $response, $postdata, 'bike');
-            \Log::info(['generateBikeProposal_shriram' => $response]);
-
             curl_close($curl);
+            // dd($response);
             return $response;
         } catch (\Exception $e) {
-            return $e->getMessage() . 'errorcode:privateBikeProposal';
+            return ErrMessage($e);
         }
     }
 
     public static function generatePrivateCarQuote(Request $request, $today, $nextyear = '', $nPlanType = null, $idv = null)
     {
         try {
+            // dd("fgfgfg");
             $userId = $request->userid;
             $user = User::find($userId);
             $today = now();
@@ -1045,8 +1053,8 @@ class ShriramService
             $Geographical = null;
             $PAforUnnamedPassenger = null;
             $PAPaidDriverConductorCleaner = null;
-            $PreviousPolicyUWYear = null;
             $cachepolicyExpiry = 'cache_policyExpiry_' . $userId;
+            // $nTpolicyNo = null;
             $PAcover = null;
             $pAcoverReason = null;
             $VehicleType = null;
@@ -1057,26 +1065,70 @@ class ShriramService
             $PAforUnnamedamount = json_decode($aData->caraddonvalue, true);
             $PAforUnnamedamount = !empty($PAforUnnamedamount) ? $PAforUnnamedamount : '0';
             $aAccessories = json_decode($aData->accessories, true);
-            $aCardata = json_decode($aData->knowcar_reg_details, true) ?? [];
-            $claim = array_key_exists('policytoggle', $aCardata) ? '0' : '1';
-            $claimper = array_key_exists('bonus-button', $aCardata) ? $aCardata['bonus-button'] : '0';
-            $transferOfowner = array_key_exists('ownershiptoggle', $aCardata) ? $aCardata['ownershiptoggle'] : '0';
             $dRegDate = $aData->knowcar_reg_details ? json_decode($aData->knowcar_reg_details, true)['carregdate'] : date('d-m-Y');
             $regDate = \DateTime::createFromFormat('d-m-Y', $dRegDate);
+            $cachemotortype = 'cache_motortype_' . $userId;
+            $aCardata = json_decode($aData->knowcar_reg_details, true) ?? [];
+            $aNewCardata = json_decode($aData->newcar_reg_details, true) ?? [];
+            $modelSearch = null;
+
+            if (GetCache($cachemotortype) == 'knowcar') {
+                // $cachemodel = 'cache_model_knowcar' . $userId;
+                $aCardata = json_decode($aData->knowcar_reg_details, true) ?? [];
+                $modelSearch = $aCardata['model'] ?? '';
+                $dRegDate = $aData->knowcar_reg_details ? json_decode($aData->knowcar_reg_details, true)['carregdate'] : date('d-m-Y');
+            }
+            if (GetCache($cachemotortype) == 'newcar') {
+                $aCardata = json_decode($aData->newcar_reg_details, true) ?? [];
+                $modelSearch = $aCardata['model'] ?? '';
+                $dRegDate = date('d-m-Y');
+            }
+            // dd($dRegDate);
+            $regDate = \DateTime::createFromFormat('d-m-Y', $dRegDate);
+            $vid = getconstant('MOTOR.SHRIRAM.KEY');
+            $vdata = getVcode($modelSearch, $vid, 'MOT-PRD-001', 'App\Models\Master\Shriram');
+            // dd($vdata);
+            $oModel = $vdata['status'] && isset($vdata['data']->vcode) ? $vdata['data']->vcode : $vdata['data'];
+
+            if (!$vdata['status']) {
+                return $oModel;
+            }
+            // if (GetCache($cachemotortype) == 'knowcar') {
+            //     $modelSearch = $aCardata['model'] ?? "";
+            // } else {
+            //     $modelSearch = $aNewCardata['model'] ?? "";
+            // }
+            $vid = getconstant('MOTOR.SHRIRAM.KEY');
+            $vdata = getVcode($modelSearch, $vid, 'MOT-PRD-001', 'App\Models\Master\Shriram');
+
+            $oModel = $vdata['status'] && isset($vdata['data']->vcode) ? $vdata['data']->vcode : $vdata['data'];
+            if (!$oModel) {
+                return $oModel;
+            }
+            // dd($oModel);
+            // $cachevcode = 'cache_vcode_' . $userId;
+            // SetCache($cachevcode, $oModel);
+
             $addonAgeLimit = [
                 '101' => 5,
                 '103' => 5,
                 '104' => 5,
                 '107' => 5,
-                '108' => 5,
+                '108' => 7,
                 '109' => 5,
                 '110' => 5,
                 '111' => 5,
                 '106' => 1
             ];
+            // $aAddons = json_decode($aData->caraddon, true) ?? [];
             $aCarAddon = is_string($aData->caraddon)
                 ? json_decode($aData->caraddon, true)
                 : (array) $aData->caraddon;
+
+            // return[
+            //       "adsdf"=>$aCarAddon
+            // ];
+
             $aAddons = !empty($aCarAddon['tpselectedaddon'])
                 ? $aCarAddon['tpselectedaddon']
                 : (
@@ -1095,13 +1147,16 @@ class ShriramService
                 if (isset($addonAgeLimit[$addonId])) {
                     $maxyears = $addonAgeLimit[$addonId];
                     if (ValidateAddonAge($regDate, $maxyears)) {
-                        $validAddons[] = $addonId;
+                        $validAddons[] = $addonId;  // valid by age
                     }
+                    // else expired, skip
                 } else {
-                    $validAddons[] = $addonId;
+                    $validAddons[] = $addonId;  // no age limit, keep it
                 }
             }
+
             $aAddons = $validAddons;
+
             // return [
             //     "valid" => $aAddons
             // ];
@@ -1111,7 +1166,7 @@ class ShriramService
                     $aResult[$item['type']] = $item['amount'];
                 }
             }
-            $cachemotortype = 'cache_motortype_' . $userId;
+
             if (GetCache($cachemotortype) == 'knowcar') {
                 if ($aCardata['prepolitype'] == 'odonly') {
                     $sPrePolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.OWNDAMAGE');
@@ -1119,6 +1174,7 @@ class ShriramService
                     $sPrevexpfDate = $aCardata['odfromdate'];  // k
                     $sPretpfDate = $aCardata['odtpfromdate'];
                     $sPretptoDate = $aCardata['odtptodate'];
+                    // $nTpolicyNo = array_key_exists('tppolicynumber', $prevPolicydata) ? $prevPolicydata['tppolicynumber'] : '';
                     $date = Carbon::createFromFormat('d-m-Y', $sPrevexptoDate);
                     $PolicyFromDate = $date->addDay()->format('d-m-Y');
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
@@ -1128,6 +1184,7 @@ class ShriramService
                     $sPrevexpfDate = $aCardata['bdtodate'];  // k
                     $sPretpfDate = $aCardata['bdtpfromdate'];
                     $sPretptoDate = $aCardata['bdtptodate'];
+                    // $nTpolicyNo = array_key_exists('tppolicynumber', $prevPolicydata) ? $prevPolicydata['tppolicynumber'] : '';
                     $date = Carbon::createFromFormat('d-m-Y', $sPrevexptoDate);
                     $PolicyFromDate = $date->addDay()->format('d-m-Y');
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
@@ -1138,13 +1195,15 @@ class ShriramService
                     $date = Carbon::createFromFormat('d-m-Y', $sPrevexptoDate);
                     $PolicyFromDate = $date->addDay()->format('d-m-Y');
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
+                    // dd($PolicyFromDate,$PolicyToDate);
                 } elseif ($aCardata['prepolitype'] == 'tponly') {
                     $sPrePolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.LIABILITY');
-                    $sPrevexptoDate = $aCardata['tptodate'];
-                    $sPrevexpfDate = $aCardata['tpfromdate'];
+                    $sPrevexptoDate = $aCardata['tptodate'];  // k
+                    $sPrevexpfDate = $aCardata['tpfromdate'];  // k
                     $date = Carbon::createFromFormat('d-m-Y', $sPrevexptoDate);
                     $PolicyFromDate = $date->addDay()->format('d-m-Y');
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
+                    // dd($PolicyFromDate,$PolicyToDate);
                 }
             }
             $sRegNumber = '';
@@ -1154,18 +1213,19 @@ class ShriramService
             $sRegNo4 = '';
             if (GetCache($cachemotortype) == 'newcar') {
                 $sRegNumber = substr(explode('(', $aData->rtocode)[1], 0, -1);
-                $sRegNo1 = substr(str_replace('-', '', $sRegNumber), 0, 2);
-                $sRegNo2 = substr(str_replace('-', '', $sRegNumber), 2, 2);
+                $sRegNo1 = substr(str_replace('-', '', $sRegNumber), 0, 2);  // k
+                $sRegNo2 = substr(str_replace('-', '', $sRegNumber), 2, 2);  // k
             } else {
                 $sRegNumber = $aData->carnumber;
-                $sRegNo1 = substr($sRegNumber, 0, 2);
-                $sRegNo2 = substr($sRegNumber, 2, 2);
-                $sRegNo3 = substr($sRegNumber, 4, 2);
-                $sRegNo4 = substr($sRegNumber, 6, 4);
+                $sRegNo1 = substr($sRegNumber, 0, 2);  // k
+                $sRegNo2 = substr($sRegNumber, 2, 2);  // k
+                $sRegNo3 = substr($sRegNumber, 4, 2);  // k
+                $sRegNo4 = substr($sRegNumber, 6, 4);  // k
             }
             $permanentAddress = isset($oJourneyData->permanent_address) && json_decode($oJourneyData->permanent_address, true) ? json_decode($oJourneyData->permanent_address, true) : [];
             $pincode = $user->pincode;
             $state = Shriram_Pincode::where('PC_CODE', $pincode)->first();
+
             if (!$state) {
                 return ['status' => '0', 'message' => 'Pincode not available for this service.'];
             }
@@ -1179,6 +1239,7 @@ class ShriramService
                     $PAcover = $aData->pacover;
                     if ($PAcover == 0) {
                         $pAcoverReason = json_decode($aData->pacover_reason, true);
+                        // $ncoverReason = array_keys($pAcoverReason)[0];
                         $ncoverReason = is_array($pAcoverReason) ? (array_keys($pAcoverReason)[0] ?? []) : [];
                         if ($ncoverReason == '1') {
                             $pAcoverReason = 'PA_TYPE1';
@@ -1193,8 +1254,15 @@ class ShriramService
                         }
                     }
                 }
+                // $firstregdate=$aCardata['carregdate'];
                 $firstregdate = array_key_exists('carregdate', $aCardata) ? $aCardata['carregdate'] : '';
-                $oModel = Shriram_Vehicle_Master::where('id', $aCardata['model'])->first();
+                $claim = array_key_exists('policytoggle', $aCardata) ? '0' : '1';
+                $claimper = array_key_exists('bonus-button', $aCardata) ? $aCardata['bonus-button'] : '0';
+                $transferOfowner = array_key_exists('ownershiptoggle', $aCardata) ? $aCardata['ownershiptoggle'] : '0';
+                // dd($transferOfowner);
+                // $oModel = Shriram_Vehicle_Master::where('id', $aCardata['model'])->first();
+
+                // dd($sModel);
             }
             if (GetCache($cachemotortype) == 'newcar') {
                 $aCardata = json_decode($aData->newcar_reg_details, true) ?? [];
@@ -1205,6 +1273,7 @@ class ShriramService
                     $PAcover = $aData->pacover;
                     if ($PAcover == 0) {
                         $pAcoverReason = json_decode($aData->pacover_reason, true);
+                        // $ncoverReason = array_keys($pAcoverReason)[0];
                         $ncoverReason = is_array($pAcoverReason) ? (array_keys($pAcoverReason)[0] ?? []) : [];
                         if ($ncoverReason == '1') {
                             $pAcoverReason = 'PA_TYPE1';
@@ -1220,12 +1289,11 @@ class ShriramService
                     }
                 }
                 $firstregdate = $today->format('d-m-Y');
-                $oModel = Shriram_Vehicle_Master::where('id', $aCardata['model'])->first();
+                // $oModel = Shriram_Vehicle_Master::where('id', $aCardata['model'])->first();
             }
-
-            $sVehicleCode = ' ';
+            $sVehicleCode = '';
             if ($oModel) {
-                $sVehicleCode = $oModel->VEHICLE_CODE;
+                $sVehicleCode = $oModel;
             }
             $sProdCode = getconstant('MOTOR.SHRIRAM.PRODUCTTYPE.PRIVATECAR');
             $sPolicyType = '';
@@ -1237,6 +1305,7 @@ class ShriramService
                 $sProposalType = getconstant('MOTOR.SHRIRAM.PROPOSALTYPE.FRESHPROPOSAL');
                 if ($nPlanType == '2') {
                     $PolicyFromDate = $today->format('d-m-Y');
+                    // $today = Carbon::today();
                     $PolicyToDate = $today->addYears(3)->subDay()->format('d-m-Y');
                     $sPolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.BUNDLED');
                     $NilDepreciationCoverYN = in_array('101', $aAddons) ? 'Y' : 'N';
@@ -1280,9 +1349,8 @@ class ShriramService
                     $AntiTheftYN = in_array('119', $aAddons) ? '1' : '0';
                     $VoluntaryExcess = in_array('120', $aAddons) ? '1' : '0';
                     $PAPaidDriverConductorCleaner = 1;
-                    $Geographical = in_array('117', $aAddons) ? 1 : '0';
+                    $Geographical = in_array('118', $aAddons) ? 1 : '0';
                     $PAforUnnamedPassenger = in_array('115', $aAddons) ? '1' : '0';
-                    $SHRIMOTORPROTECTION_YN = in_array('113', $aAddons) ? 'Y' : 'N';
                 }
                 if ($nPlanType == '2') {
                     $sPolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.PACKAGE');
@@ -1333,10 +1401,19 @@ class ShriramService
             } else {
                 $sRtocity = '';
             }
+            // dd($nPlanType, $PolicyFromDate);
+            // $cachepolicyExpiry = 'cache_policyExpiry_' . $userId;
+            // return [
+            //     'PAforUnnamedPassenger' => $PAforUnnamedPassenger,
+            //     'PAforUnnamedamount' => $PAforUnnamedamount
+            // ];
+            // $cacheplantype = 'cache_plantype' . $userId;
+            // $plantype=(Getcache($cacheplantype) == 3)?1:0;
             $cachecaridv = 'cache_' . $userId . '_caridv';
             $idv = GetCache($cachecaridv);
+            // $idv = Cache::store('mysql_cache')->get("user_" . $userId . "_caridv");
             // $url = MasterAPI::where('apicode', '115')->first()->apistring;
-            $url = 'https://nsecureapi.shriramgi.com/NOVADIGITAL/SVS_Services/PolicyGeneration.svc/RestService/GetQuote';
+            $url = getconstant('MOTOR.SHRIRAM.API.PRIVATECARQUOTE');
             $curl = curl_init();
             $postJson = json_encode([
                 'objPolicyEntryETT' => [
@@ -1349,7 +1426,7 @@ class ShriramService
                     'InsuredName' => $AuthUser['name'],
                     'PolicyType' => $sPolicyType,
                     'ProposalType' => $sProposalType,
-                    'VehicleCode' => $sVehicleCode ?? 'UL8066',
+                    'VehicleCode' => $oModel ?? 'UL8066',
                     'EngineNo' => '',
                     'FirstRegDt' => $firstregdate ?? '',
                     'VehicleType' => $VehicleType ?? '',
@@ -1360,7 +1437,7 @@ class ShriramService
                     'RegNo3' => $sRegNo3,
                     'RegNo4' => $sRegNo4,
                     'RTOCode' => $sRegNo1 . '-' . $sRegNo2,
-                    'PreviousPolicyNo' => '',
+                    'PreviousPolicyNo' => self::genRandomNumber(),
                     'PreviousInsurer' => '',
                     'PreviousPolicyFromDt' => $sPrevexpfDate ?? '',
                     'PreviousPolicyToDt' => $sPrevexptoDate ?? '',
@@ -1372,7 +1449,7 @@ class ShriramService
                     'PreviousPolicyType' => $sPrePolicyType ?? '',
                     'PreviousNilDepreciation' => '',
                     'PAforUnnamedPassengerYN' => $PAforUnnamedPassenger ?? '',
-                    'PAforUnnamedPassengerSI' => ($PAforUnnamedPassenger == 1) ? $PAforUnnamedamount : '',
+                    'PAforUnnamedPassengerSI' => ($PAforUnnamedPassenger == '1') ? $PAforUnnamedamount : '',
                     'ElectricalaccessYN' => array_key_exists('electrical', $aResult) ? 'Y' : 'N',
                     'ElectricalaccessSI' => array_key_exists('electrical', $aResult) ? $aResult['electrical'] : '',
                     'ElectricalaccessRemarks' => '',
@@ -1404,14 +1481,14 @@ class ShriramService
                     'InBuiltCNGKitYN' => '0',
                     'NilDepreciationCoverYN' => $NilDepreciationCoverYN ?? '',
                     'RSACover' => $RSACover ?? '',
-                    'DailyExpRemYN' => $DailyExpRemYN ?? '',
-                    'KeyReplacementYN' => $KeyReplacementYN ?? '',
-                    'LossOfPersonBelongYN' => $LossOfPersonBelongYN ?? '',
-                    'EmergencyTranHotelExpRemYN' => $EmergencyTranHotelExpRemYN ?? '',
-                    'MultiCarBenefitYN' => $MultiCarBenefitYN ?? '',
-                    'Eng_Protector' => $Eng_Protector ?? '',
-                    'Consumables' => $Consumables ?? '',
-                    'InvReturnYN' => $InvReturnYN ?? '',
+                    'DailyExpRemYN' => $DailyExpRemYN ?? 'N',
+                    'KeyReplacementYN' => $KeyReplacementYN ?? 'N',
+                    'LossOfPersonBelongYN' => $LossOfPersonBelongYN ?? 'N',
+                    'EmergencyTranHotelExpRemYN' => $EmergencyTranHotelExpRemYN ?? 'N',
+                    'MultiCarBenefitYN' => $MultiCarBenefitYN ?? 'N',
+                    'Eng_Protector' => $Eng_Protector ?? 'N',
+                    'Consumables' => $Consumables ?? 'N',
+                    'InvReturnYN' => $InvReturnYN ?? 'N',
                     'SHRIMOTORPROTECTION_YN' => $SHRIMOTORPROTECTION_YN ?? '',
                     'LimitedTPPDYN' => $LimitedTPPDYN ?? '0',
                     'Gender' => $AuthUser['gender'][0] ?? '',
@@ -1464,14 +1541,8 @@ class ShriramService
                     'AadharEnrollNo' => ''
                 ]
             ]);
-            //  return[
-            //     "asdf" => $postJson
-            //  ];
 
-            // \Log::info([$nPlanType=>$postJson]);
-            // \Log::info(['today'=>$today,'plantype'=>$nPlanType]);
-            // \Log::info(['Car_Quotation_shriram_request' => $postJson]);
-            SaveFile($postJson, 'shriram_car_quote_request.txt');
+            SaveFile($postJson, 'shriram_quote_request.txt');
             curl_setopt_array($curl, array(
                 CURLOPT_URL => $url,
                 CURLOPT_RETURNTRANSFER => true,
@@ -1490,13 +1561,14 @@ class ShriramService
                 ),
             ));
             $response = curl_exec($curl);
-            SaveFile($response, 'shriram_car_quote_response.txt');
+            SaveFile($postJson, 'shriram_quote_response.txt');
             curl_close($curl);
-            // \Log::info(['Car_Quotation_shriram_response' => $response]);
+            // \Log::info(['Car_Quotation_shriram' => $response]);
             return $response;
         } catch (\Exception $e) {
-            // \Log::info($e->getMessage() . "errorcode:shriram_service_generatePrivateCarQuote");
-            return ['status' => '0', 'message' => $e->getMessage() . 'An error occurred while fetching cache data.'];
+            SaveFile($e->getMessage() . '' . $e->getLine(), 'shriram_exception.txt');
+            // dd($response);
+            return ErrMessage($e);
         }
     }
 
@@ -1522,10 +1594,13 @@ class ShriramService
             $user = User::find($userId);
             $AuthUser = $user->toArray();
             $aData = DataModel::where('userid', $userId)->first();
-            $oJourneyData = MotorJourney::where('userid', $userId)->where('is_car', '1')->first();
+            $oJourneyData = MotorJourney::where('userid', $userId)->where('is_car', '1')->where('vid', getconstant('MOTOR.SHRIRAM.KEY'))->first();
             $prevPolicydata = json_decode($oJourneyData->pre_policy_details, true);
+            $LimitedTPPDYN = null;
+            $LLtoPaidDriverYN = null;
+            $AntiTheftYN = null;
+            $NoEmpCoverLL = null;
             $VoluntaryExcess = null;
-            $PreviousPolicyUWYear = null;
             $Geographical = null;
             $PAforUnnamedPassenger = null;
             $VehicleType = null;
@@ -1533,14 +1608,6 @@ class ShriramService
             $aCardata = json_decode($aData->knowcar_reg_details, true);
             $aNewCardata = json_decode($aData->newcar_reg_details, true);
             $aAccessories = json_decode($aData->accessories, true);
-            $cachepolicyExpiry = 'cache_policyExpiry_' . $userId;
-            $aVehicledetails = json_decode($oJourneyData->vehicle_details, true);
-            $aResult = [];
-            if (!empty($aAccessories)) {
-                foreach ($aAccessories as $item) {
-                    $aResult[$item['type']] = $item['amount'];
-                }
-            }
             $pAcoverReason = '';
             $PAcover = '';
             $PAforUnnamedamount = json_decode($aData->caraddonvalue, true);
@@ -1554,7 +1621,37 @@ class ShriramService
             $sRegNo3 = '';
             $sRegNo1 = '';
             $sRegNo4 = '';
+            $cachepolicyExpiry = 'cache_policyExpiry_' . $userId;
             $cachemotortype = 'cache_motortype_' . $userId;
+            $aResult = [];
+            if (!empty($aAccessories)) {
+                foreach ($aAccessories as $item) {
+                    $aResult[$item['type']] = $item['amount'];
+                }
+            }
+            if (GetCache($cachemotortype) == 'knowcar') {
+                // $cachemodel = 'cache_model_knowcar' . $userId;
+                $aCardata = json_decode($aData->knowcar_reg_details, true) ?? [];
+                $modelSearch = $aCardata['model'] ?? '';
+                $dRegDate = $aData->knowcar_reg_details ? json_decode($aData->knowcar_reg_details, true)['carregdate'] : date('d-m-Y');
+            }
+            if (GetCache($cachemotortype) == 'newcar') {
+                $aCardata = json_decode($aData->newcar_reg_details, true) ?? [];
+                $modelSearch = $aCardata['model'] ?? '';
+                $dRegDate = $aData->newcar_reg_details ? json_decode($aData->newcar_reg_details, true)['carregdate'] : date('d-m-Y');
+            }
+            // dd($dRegDate);
+            $regDate = \DateTime::createFromFormat('d-m-Y', $dRegDate);
+            $vid = getconstant('MOTOR.SHRIRAM.KEY');
+            $vdata = getVcode($modelSearch, $vid, 'MOT-PRD-001', 'App\Models\Master\Shriram');
+            // dd($vdata);
+            $oModel = $vdata['status'] && isset($vdata['data']->vcode) ? $vdata['data']->vcode : $vdata['data'];
+
+            if (!$vdata['status']) {
+                return $oModel;
+            }
+
+            // $cacheunder = 'cache_under_' . $userId;
 
             if (GetCache($cachemotortype) == 'newcar') {
                 $sRegNumber = substr(explode('(', $aData->rtocode)[1], 0, -1);
@@ -1576,10 +1673,6 @@ class ShriramService
             $claimper = null;
             $transferOfowner = null;
             $gstno = null;
-            $oModel = null;
-            $claim = array_key_exists('policytoggle', $aCardata) ? '0' : '1';
-            $claimper = array_key_exists('bonus-button', $aCardata) ? $aCardata['bonus-button'] : '0';
-            $transferOfowner = array_key_exists('ownershiptoggle', $aCardata) ? $aCardata['ownershiptoggle'] : '0';
 
             if (GetCache($cachemotortype) == 'knowcar') {
                 if ($aCardata['prepolitype'] == 'odonly') {
@@ -1602,7 +1695,8 @@ class ShriramService
                     $sPretptoDate = $aCardata['bdtptodate'];
                     $nTpolicyNo = array_key_exists('tppolicynumber', $prevPolicydata) ? $prevPolicydata['tppolicynumber'] : '';
                     $sTpInsurer = array_key_exists('tpprevInsurance', $prevPolicydata) ? $prevPolicydata['tpprevInsurance'] : '';
-                    $tpInsurCmpny = Shriram_Prev_insurence::where('id', $sTpInsurer)->first()->insurance;
+                    // dd($prevPolicydata,$sTpInsurer);
+                    $tpInsurCmpny = Shriram_Prev_insurence::where('id', $sTpInsurer ?? 1)->first()->insurance;
                     $date = Carbon::createFromFormat('d-m-Y', $sPrevexptoDate);
                     $PolicyFromDate = $date->addDay()->format('d-m-Y');
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
@@ -1622,35 +1716,45 @@ class ShriramService
                     $PolicyToDate = $date->addYear()->subDay()->format('d-m-Y');
                 }
             }
-
-            if (GetCache($cachemotortype) == 'newcar') {
-                $oModel = Shriram_Vehicle_Master::where('id', $aNewCardata['model'])->first();
-            } else {
-                $oModel = Shriram_Vehicle_Master::where('id', $aCardata['model'])->first();
-            }
-            $sVehicleCode = '';
-            if ($oModel) {
-                $sVehicleCode = $oModel->VEHICLE_CODE;
-            }
-            $oObj = new ShriramCarController();
+            $sVehicleCode = $oModel;
+            // return $sVehicleCode;
+            // $oObj = new ShriramCarController();
             $aDocument = UserMotorDescription::where('userid', $userId)->first();
             // return $aDocument;
-
             $aIdDetails = $aDocument->idnumber ? json_decode($aDocument->idnumber, true) : [];
-
             $filePath = json_decode($aDocument->document, true);
             $insurePhotoB64 = self::FileIntoBase64($filePath['insurephoto']);
             $identityPhotoB64 = self::FileIntoBase64($filePath['identity']['identityfront']);
             $addressPhotoB64 = self::FileIntoBase64($filePath['address']['addressfront']);
             self::initlize();
+
             // $url = MasterAPI::where('apicode', '116')->first()->apistring;
-            $url = 'https://nsecureapi.shriramgi.com/NOVADIGITAL/SVS_Services/PolicyGeneration.svc/RestService/GenerateProposal';
+
             $aNominee = $oJourneyData->nominee_details ? jdec($oJourneyData->nominee_details) : [];
             $permanentAddress = json_decode($oJourneyData->permanent_address, true) ?? [];
             $pincode = $permanentAddress['pincode'];
             $state = Shriram_Pincode::where('PC_CODE', $pincode)->first();
+
             $sState = $state->STATE;
+
             $nPlanType = $aData->car_plan_type;
+            // $aCarAddon = is_string($aData->caraddon)
+            //     ? json_decode($aData->caraddon, true)
+            //     : (array) $aData->caraddon;
+
+            // // Pick based on which exists
+            // $aAddons = !empty($aCarAddon['tpselectedaddon'])
+            //     ? $aCarAddon['tpselectedaddon']
+            //     : (
+            //     !empty($aCarAddon['selectedaddon'])
+            //     ? $aCarAddon['selectedaddon']
+            //     : (
+            //         !empty($aCarAddon['odselectedaddon'])
+            //         ? $aCarAddon['odselectedaddon']
+            //         : []
+            //     )
+            // );
+
             $dRegDate = $aData->knowcar_reg_details ? json_decode($aData->knowcar_reg_details, true)['carregdate'] : date('d-m-Y');
             $regDate = \DateTime::createFromFormat('d-m-Y', $dRegDate);
             $addonAgeLimit = [
@@ -1664,9 +1768,15 @@ class ShriramService
                 '111' => 5,
                 '106' => 1
             ];
+            // $aAddons = json_decode($aData->caraddon, true) ?? [];
             $aCarAddon = is_string($aData->caraddon)
                 ? json_decode($aData->caraddon, true)
                 : (array) $aData->caraddon;
+
+            // return[
+            //       "adsdf"=>$aCarAddon
+            // ];
+
             $aAddons = !empty($aCarAddon['tpselectedaddon'])
                 ? $aCarAddon['tpselectedaddon']
                 : (
@@ -1678,10 +1788,9 @@ class ShriramService
                                 : []
                         )
                 );
-            $validAddons = [];
 
+            $validAddons = [];
             foreach ($aAddons as $addonId) {
-                $addonId = (string) $addonId;
                 if (isset($addonAgeLimit[$addonId])) {
                     $maxyears = $addonAgeLimit[$addonId];
                     if (ValidateAddonAge($regDate, $maxyears)) {
@@ -1691,22 +1800,31 @@ class ShriramService
                     $validAddons[] = $addonId;
                 }
             }
-            $aAddons = $validAddons;
-            // return [
-            //     "valid" => $aAddons
+            //  return[
+            //     "sdff"=> $aAddons,
+            //     "validAddons"=>$validAddons
             // ];
+            $aAddons = $validAddons;
+
+            // $aAddons = json_decode($aData->caraddon, true) ?? [];
+
+            // $aCacheData = json_decode(Cache::store('mysql_cache')->get("user_" . $userId . "_carquote_key"), true) ?? [];
+            //  return $aCacheData;
+            // $aGetData = $oObj->getCacheCarQuote($request, $aCacheData[getconstant("MOTOR.SHRIRAM.KEY")][$nPlanType]);
+            // $nIdv = $aGetData['data']['idv'];
             $cachecaridv = 'cache_' . $userId . '_caridv';
             $nIdv = GetCache($cachecaridv);
             $randomValue = self::genRandomNumber();
-            $EngineNo = $aVehicledetails['Enginenumber'];
-            $ChassisNo = $aVehicledetails['Chassisnumber'];
+            $EngineNo = isset($aVehicledetails['Enginenumber']) && !empty($aVehicledetails['Enginenumber']) ? $aVehicledetails['Enginenumber'] : 'GDFG59D4GD6546D' . $randomValue;  // $aVehicledetails['Enginenumber'];
+            $ChassisNo = isset($aVehicledetails['Chassisnumber']) && !empty($aVehicledetails['Chassisnumber']) ? $aVehicledetails['Chassisnumber'] : 'GDF45GDFGD4G56D' . $randomValue;  // $aVehicledetails['Chassisnumber'];
             $sProdCode = getconstant('MOTOR.SHRIRAM.PRODUCTTYPE.PRIVATECAR');
             $sPolicyType = '';
             $sProposalType = '';
             $gstno = null;
             $today = now();
+
             if (GetCache($cachemotortype) == 'newcar') {
-                $VehicleType = 'W';
+                $VehicleType = 'U';
                 $sProposalType = getconstant('MOTOR.SHRIRAM.PROPOSALTYPE.FRESHPROPOSAL');
                 $companydetails = json_decode($oJourneyData->company_details, true);
                 if ($aNewCardata['under'] == 'company') {
@@ -1716,6 +1834,7 @@ class ShriramService
                     $PAcover = $aData->pacover;
                     if ($PAcover == 0) {
                         $pAcoverReason = json_decode($aData->pacover_reason, true);
+                        // $ncoverReason = array_keys($pAcoverReason)[0];
                         $ncoverReason = is_array($pAcoverReason) ? (array_keys($pAcoverReason)[0] ?? []) : [];
                         if ($ncoverReason == '1') {
                             $pAcoverReason = 'PA_TYPE1';
@@ -1748,12 +1867,14 @@ class ShriramService
                     $PAcover = 0;
                     $pAcoverReason = 'PA_TYPE2';
                     $companydetails = json_decode($oJourneyData->company_details, true);
+                    // dd($companydetails);
                     $gstno = $companydetails['gstnumber'];
                 } else {
                     $PAcover = $aData->pacover;
                     $gstno = null;
                     if ($PAcover == 0) {
                         $pAcoverReason = json_decode($aData->pacover_reason, true);
+                        // $ncoverReason = array_keys($pAcoverReason)[0];
                         $ncoverReason = is_array($pAcoverReason) ? (array_keys($pAcoverReason)[0] ?? []) : [];
                         if ($ncoverReason == '1') {
                             $pAcoverReason = 'PA_TYPE1';
@@ -1768,7 +1889,11 @@ class ShriramService
                         }
                     }
                 }
+                $claim = array_key_exists('policytoggle', $aCardata) ? '0' : '1';
+                $claimper = array_key_exists('bonus-button', $aCardata) ? $aCardata['bonus-button'] : '0';
+                $transferOfowner = array_key_exists('ownershiptoggle', $aCardata) ? $aCardata['ownershiptoggle'] : '0';
                 $sProposalType = getconstant('MOTOR.SHRIRAM.PROPOSALTYPE.MARKETRENEWAL');
+                // dd($aCardata);
                 if ($nPlanType == '1') {
                     $sPolicyType = getconstant('MOTOR.SHRIRAM.POLICYTYPE.OWNDAMAGE');
                     $Geographical = in_array('117', $aAddons) ? 1 : '0';
@@ -1798,6 +1923,7 @@ class ShriramService
             } else {
                 $sRtocity = '';
             }
+
             $dob = !empty($oJourneyData->dob)
                 ? $oJourneyData->dob
                 : (!empty($user->dob)
@@ -1805,10 +1931,20 @@ class ShriramService
                     : '29-04-2000');
             $cacheproductcode = 'cache_productcode_' . $userId;
             SetCache($cacheproductcode, $sProdCode);
+            // session()->put('productcode', $sProdCode);
+
             $cacheproposaltype = 'cache_proposaltype_' . $userId;
             SetCache($cacheproposaltype, $sProposalType);
+            // session()->put('proposaltype', $sProposalType);
             $cachepolicytpe = 'cache_policytpe_' . $userId;
             SetCache($cachepolicytpe, $sPolicyType);
+            // session()->put('policytpe', $sPolicyType);
+
+            // $cacheplantype = 'cache_plantype_' . $userId;
+            // SetCache($cacheplantype, $nPlanType);
+            // session()->put('plantype', $nPlanType);
+
+            // dd($dob);
             $curl = curl_init();
             $postdata = json_encode([
                 'objPolicyEntryETT' => [
@@ -1826,11 +1962,11 @@ class ShriramService
                     'State' => $sState ?? '',
                     'City' => $permanentAddress['city'] ?? '',
                     'PinCode' => $permanentAddress['pincode'] ?? '',  // manually
-                    'GSTNo' => $gstno ?? '',  // in  case o=of corporate
+                    'GSTNo' => '',  // $gstno ?? "",//in  case o=of corporate
                     'TelephoneNo' => '',
                     'ProposalType' => $sProposalType ?? '',
                     'PolicyType' => $sPolicyType ?? '',  // "MOT-PLT-009",//$sPolicyType,
-                    'DateOfBirth' => Carbon::createFromFormat('d-m-Y', $dob)->format('Y-m-d'),  // $dob,//kyc dob
+                    'DateOfBirth' => Carbon::createFromFormat('d-m-Y', str_replace('/', '-', $dob))->format('Y-m-d'),  // $dob,//kyc dob
                     'MobileNo' => $AuthUser['mobile'] ?? '',
                     'FaxNo' => '',
                     'EmailID' => $AuthUser['email'] ?? '',
@@ -1840,7 +1976,7 @@ class ShriramService
                     'CoverNoteDt' => '',
                     'VehicleCode' => $sVehicleCode ?? 'UL8066',
                     'FirstRegDt' => $sRegdate ?? '',
-                    'VehicleType' => $VehicleType ?? '',
+                    'VehicleType' => $VehicleType,
                     'EngineNo' => $EngineNo ?? '',
                     'ChassisNo' => $ChassisNo ?? '',
                     'RegNo1' => $sRegNo1 ?? '',
@@ -1971,12 +2107,7 @@ class ShriramService
                     'Pan_Form60_Document_Name' => '1'
                 ]
             ]);
-            //     return[
-            //     "asdf" => $postdata
-            //  ];
-            // return $postdata;
-            // dd($postdata);
-            \Log::info(['privateCarProposal_shriram_Request_Log' => $postdata]);
+            $url = getconstant('MOTOR.SHRIRAM.API.PRIVATECARPOLICY');
             curl_setopt_array($curl, array(
                 CURLOPT_URL => $url,
                 CURLOPT_RETURNTRANSFER => true,
@@ -1995,20 +2126,15 @@ class ShriramService
                     'Cookie: ASP.NET_SessionId=3h5sofst43z4xtc5kse54rjy'
                 ),
             ));
+            // die;
             $response = curl_exec($curl);
-            //  return[
-            //     "asdf" => $response
-            //  ];
-            Logfunction($userId, 'shriram', $response, $postdata, 'car');
-            \Log::info(['privateCarProposal_shriram_response' => $response]);
-
+            SaveFile($response, 'shriram_car_proposal_reponse.txt');
             curl_close($curl);
             return $response;
         } catch (\Exception $e) {
-            return response()->json([
-                'status' => false,
-                'msg' => $e->getMessage()
-            ]);
+            dd(Err($e));
+            SaveFile($response, 'shriram_car_proposal_reponse.txt');
+            return ErrMessage($e);
             // return $e->getMessage() . 'errorcode:privateCarProposal';
         }
     }
@@ -2174,7 +2300,7 @@ class ShriramService
             ),
         ));
         $response = curl_exec($curl);
-        \Log::info(['PVVCProposal_Shriram' => $response]);
+        // \Log::info(['PVVCProposal_Shriram' => $response]);
         curl_close($curl);
         echo $response;
     }
@@ -2376,7 +2502,7 @@ class ShriramService
         ));
 
         $response = curl_exec($curl);
-        \Log::info(['GCCVProposal_shriram' => $response]);
+        // \Log::info(['GCCVProposal_shriram' => $response]);
         curl_close($curl);
         echo $response;
     }
@@ -2409,7 +2535,7 @@ class ShriramService
             ),
         ));
         $response = curl_exec($curl);
-        \Log::info(['SGIRenewal_shriram' => $response]);
+        // \Log::info(['SGIRenewal_shriram' => $response]);
         curl_close($curl);
         echo $response;
     }
@@ -2421,8 +2547,7 @@ class ShriramService
 
     public static function PaymentStatus($nProposalNo, $nQuoteId)
     {
-        $url = 'https://novaapi.shriramgi.com/NovaWS/novaServices/WebAggregator.svc/RestService/getPaymentStatus';
-        // $url = 'http://novaapiuat.shriramgi.com/UATNovaWS/novaServices/WebAggregator.svc/RestService/getPaymentStatus';
+        $url = getconstant('MOTOR.SHRIRAM.API.PAYMENTSTATUS');
 
         $curl = curl_init();
         $postdata = json_encode([

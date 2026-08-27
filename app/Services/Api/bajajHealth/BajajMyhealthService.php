@@ -922,7 +922,7 @@ class BajajMyhealthService
             );
             // return $postData;
             // dd($postData);
-            SaveFile($postData, 'bajaj_indv_policy_request.txt');
+            SaveFile($postData, 'bajajmyhealth_indv_policy_request.txt');
             $curl = curl_init();
             curl_setopt_array($curl, [
                 // CURLOPT_URL => 'https://htapi.bagicpp.bajajallianz.com/bagicHws/health/healthissuepolicy',
@@ -942,7 +942,7 @@ class BajajMyhealthService
             ]);
             $response = curl_exec($curl);
             // dd($response);
-            SaveFile($response, 'bajaj_indv_policy_response.txt');
+            SaveFile($response, 'bajajmyhealth_indv_policy_response.txt');
             // Log::info(['Response' => $response]);
             return $response;
         } catch (\Exception $e) {

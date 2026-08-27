@@ -93,6 +93,7 @@ class GoDigitCarService
             $sNewToken = GoDigitUtilityService::TokenGenerate();
             $sToken = json_decode($sNewToken, true);
             $sToken = isset($sToken) && isset($sToken['access_token']) ? $sToken['access_token'] : '';
+            // dd($sToken);
             $aData = DataModel::where('userid', $userId)->first();
             $aCarAddon = is_string($aData->caraddon)
                 ? json_decode($aData->caraddon, true)
@@ -176,7 +177,22 @@ class GoDigitCarService
             $plantype = $aData->car_plan_type;
             $idv = $plantype == '3' ? 0 : GetCache($cachecaridv);
             $cachemotortype = 'cache_motortype_' . $userId;
-            // dd($idv);
+            $vahanresponse = GetCache($userId . '_vahandata');
+            $vahanresponse = json_decode($vahanresponse, true);
+            $vahanregdate = $vahanresponse['registration_date'] ?? null;
+            $monthsfromtoday = Carbon::parse($vahanregdate)
+                ->diffInMonths(Carbon::parse(today()->format('Y-m-d')));
+            $claim = match (true) {
+                $monthsfromtoday <= 12 * 1 => 'ZERO',
+                $monthsfromtoday <= 12 * 2 && $monthsfromtoday >= 12 * 1 => 'TWENTY',
+                $monthsfromtoday <= 12 * 3 && $monthsfromtoday >= 12 * 2 => 'TWENTY',
+                $monthsfromtoday <= 12 * 4 && $monthsfromtoday >= 12 * 3 => 'TWENTY_FIVE',
+                $monthsfromtoday <= 12 * 5 && $monthsfromtoday >= 12 * 4 => 'THIRTY_FIVE',
+                $monthsfromtoday <= 12 * 6 && $monthsfromtoday >= 12 * 5 => 'FORTY_FIVE',
+                $monthsfromtoday >= 12 * 6 => 'FIFTY',
+                default => 'ZERO',
+            };
+
             if (GetCache($cachemotortype) == 'knowcar') {
                 $aCardata = json_decode($aData->knowcar_reg_details, true) ?? [];
                 $modelSearch = $aCardata['model'] ?? '';
@@ -392,8 +408,7 @@ class GoDigitCarService
                 $NewVehicleType = false;
 
                 // $previousPolicyNumber = "12345877";
-                $previousNoClaimBonus = $claimperString;
-                // dd($previousNoClaimBonus);
+                $previousNoClaimBonus = $claim;
                 $isClaimInLastYear = false;
                 $isPreviousInsurerKnown = true;
                 $subInsuranceProductCode = getconstant('MOTOR.GODIGIT.PROPOSALTYPE.MARKETRENEWAL');
@@ -401,13 +416,13 @@ class GoDigitCarService
                     $sinsuranceProductCode = getconstant('MOTOR.GODIGIT.CAR.POLICYTYPE.OWNDAMAGE');
                     $previousInsurer = [
                         'isPreviousInsurerKnown' => true,
-                        'previousInsurerCode' => $previousInsurerCode ?? null,
-                        'previousPolicyNumber' => $previousInsurerPolicy ?? null,
+                        'previousInsurerCode' => null,
+                        'previousPolicyNumber' => null,
                         'previousPolicyExpiryDate' => $sPrevexptoDate ?? '',
                         'isClaimInLastYear' => false,
                         'originalPreviousPolicyType' => $previousPolicyTypeCodeCode,
                         'previousPolicyType' => $previousPolicyTypeCodeCode,
-                        'previousNoClaimBonus' => $previousNoClaimBonus,  // "ZERO",
+                        'previousNoClaimBonus' => $claim,  // "ZERO",
                         'previousInsuranceCompany' => $previousInsurerCode ?? null,
                         'currentThirdPartyPolicy' => [
                             'isCurrentThirdPartyPolicyActive' => true,
@@ -421,15 +436,15 @@ class GoDigitCarService
                 if ($nPlanType == '2') {
                     $sinsuranceProductCode = getconstant('MOTOR.GODIGIT.CAR.POLICYTYPE.PACKAGE');
                     $previousInsurer = [
-                        'previousInsurerCode' => $previousInsurerCode ?? '',
-                        'previousPolicyExpiryDate' => $sPrevexptoDate ?? '',
+                        'previousInsurerCode' => null,
+                        'previousPolicyExpiryDate' => null,
                         'isClaimInLastYear' => false,  // $isClaimInLastYear ?? "",
-                        'previousNoClaimBonus' => $previousNoClaimBonus ?? null,
+                        'previousNoClaimBonus' => $claim ?? 'ZERO',
                         'previousPolicyNumber' => null,
                         'isPreviousInsurerKnown' => $isPreviousInsurerKnown ?? null,
                         'originalPreviousPolicyType' => $previousPolicyTypeCodeCode,
                         'previousPolicyType' => $previousPolicyTypeCodeCode,
-                        'previousInsuranceCompany' => $previousInsurerCode ?? null,
+                        'previousInsuranceCompany' => null,
                         'currentThirdPartyPolicy' => [
                             'isCurrentThirdPartyPolicyActive' => true,
                             'currentThirdPartyPolicyInsurerCode' => $previousTpInsurerCode ?? '',
@@ -452,7 +467,7 @@ class GoDigitCarService
                         'isClaimInLastYear' => false,
                         'originalPreviousPolicyType' => $previousPolicyTypeCodeCode,
                         'previousPolicyType' => $previousPolicyTypeCodeCode,
-                        'previousNoClaimBonus' => $previousNoClaimBonus ?? 'ZERO',  // "ZERO",
+                        'previousNoClaimBonus' => $claim ?? 'ZERO',  // "ZERO",
                         'previousInsuranceCompany' => $previousInsurerCode ?? null,
                         'currentThirdPartyPolicy' => [
                             'isCurrentThirdPartyPolicyActive' => true,
@@ -626,11 +641,12 @@ class GoDigitCarService
             if (GetCache($cachemotortype) == 'newcar') {
                 SaveFile($data, 'godigit_quote_newcar_json_request.txt');
             } else {
-                SaveFile($data, 'godigit_quote_json_request.txt');
+                SaveFile($data, 'godigit_quote_knowcar_json_request.txt');
             }
-
+            $url = getconstant('MOTOR.GODIGIT.API.QUOTE');
+            $integartionid = getconstant('MOTOR.GODIGIT.INTEGRATIONID.QUOTE');
             curl_setopt_array($curl, array(
-                CURLOPT_URL => 'https://oneapi.godigit.com/OneAPI/v1/executor',
+                CURLOPT_URL => $url,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
@@ -640,7 +656,7 @@ class GoDigitCarService
                 CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => $data,
                 CURLOPT_HTTPHEADER => array(
-                    'integrationId: 28094-0100',  // 22789-0100 // // 27632-0100
+                    'integrationId: ' . $integartionid,  // 22789-0100 // // 27632-0100
                     'Authorization: Bearer ' . $sToken,
                     'Content-Type: application/json'
                 ),
@@ -820,6 +836,21 @@ class GoDigitCarService
 
             $today = now();
             $claimperString = null;
+            $vahanresponse = GetCache($userId . '_vahandata');
+            $vahanresponse = json_decode($vahanresponse, true);
+            $vahanregdate = $vahanresponse['registration_date'] ?? null;
+            $monthsfromtoday = Carbon::parse($vahanregdate)
+                ->diffInMonths(Carbon::parse(today()->format('Y-m-d')));
+            $claim = match (true) {
+                $monthsfromtoday <= 12 * 1 => 'ZERO',
+                $monthsfromtoday <= 12 * 2 && $monthsfromtoday >= 12 * 1 => 'TWENTY',
+                $monthsfromtoday <= 12 * 3 && $monthsfromtoday >= 12 * 2 => 'TWENTY',
+                $monthsfromtoday <= 12 * 4 && $monthsfromtoday >= 12 * 3 => 'TWENTY_FIVE',
+                $monthsfromtoday <= 12 * 5 && $monthsfromtoday >= 12 * 4 => 'THIRTY_FIVE',
+                $monthsfromtoday <= 12 * 6 && $monthsfromtoday >= 12 * 5 => 'FORTY_FIVE',
+                $monthsfromtoday >= 12 * 6 => 'FIFTY',
+                default => 'ZERO',
+            };
             if (GetCache($cachemotortype) == 'knowcar') {
                 // $cachemodel = 'cache_model_knowcar' . $userId;
                 $aCardata = json_decode($aData->knowcar_reg_details, true) ?? [];
@@ -836,10 +867,12 @@ class GoDigitCarService
             $regDate = \DateTime::createFromFormat('Y-m-d', $dRegDate);
             $vid = getconstant('MOTOR.GODIGIT.KEY');
             $vdata = getVcode($modelSearch, $vid, 'MOT-PRD-001', 'App\Models\Master\Godigit');
+
             $oModel = $vdata['status'] && isset($vdata['data']->vcode) ? $vdata['data']->vcode : $vdata['data'];
             if (!$vdata['status']) {
                 return $oModel;
             }
+
             $addonAgeLimit = [
                 '101' => 7,
                 '103' => 10,
@@ -856,10 +889,12 @@ class GoDigitCarService
             $aNominee = json_decode($oJourneyData->nominee_details, true) ?? [];
             $permanentAddress = json_decode($oJourneyData->permanent_address, true) ?? [];
             $ContactDetails = json_decode($oJourneyData->contact_details, true) ?? [];
-            // dd($ContactDetails);
-            $pincode = $permanentAddress['pincode'];
+
+            $pincode = $permanentAddress['pincode'] ?? '';
+
             $state = Godigit_pincode::where('Pincode', $pincode)->first();
             // return $state['Statecode'];
+            // dd($state);
             $sState = $state['Statecode'];
             $nPlanType = $aData->car_plan_type;
             $dRegDate = $aData->knowcar_reg_details ? json_decode($aData->knowcar_reg_details, true)['carregdate'] : date('d-m-Y');
@@ -908,6 +943,7 @@ class GoDigitCarService
                 $firstregdate = \DateTime::createFromFormat('d-m-Y', $sRegdate)->format('Y-m-d');
             }
             // return $firstregdate;
+
             $previousPolicyTypeCodeCode = null;
             if (GetCache($cachemotortype) == 'knowcar') {
                 if ($aCardata['prepolitype'] == 'odonly') {
@@ -1028,7 +1064,7 @@ class GoDigitCarService
                 // $prevInsurCmpny = Godigit_Prev_Ins::where('id', $prevPolicydata['prevInsuranceId'])->first()->no;
                 // $previousInsurerCode = $prevInsurCmpny;
                 // $previousPolicyNumber = "12345877";
-                $previousNoClaimBonus = $claimperString;  // "TWENTY";
+                $previousNoClaimBonus = $claim;  // "TWENTY";
                 // dd($previousNoClaimBonus,$claim,$aCardata);
                 $isClaimInLastYear = false;
                 $isPreviousInsurerKnown = true;
@@ -1069,7 +1105,7 @@ class GoDigitCarService
                         'isClaimInLastYear' => false,
                         'originalPreviousPolicyType' => $previousPolicyTypeCodeCode,
                         'previousPolicyType' => $previousPolicyTypeCodeCode,
-                        'previousNoClaimBonus' => $previousNoClaimBonus ?? 'ZERO',  // "ZERO",
+                        'previousNoClaimBonus' => $claim ?? 'ZERO',  // "ZERO",
                         'currentThirdPartyPolicy' => [
                             'isCurrentThirdPartyPolicyActive' => true,
                             'currentThirdPartyPolicyInsurerCode' => $previousTpInsurerCode ?? '',
@@ -1086,7 +1122,7 @@ class GoDigitCarService
                         'previousInsurerCode' => $previousInsurerCode ?? '',
                         'previousPolicyExpiryDate' => $sPrevexptoDate ?? '',
                         'isClaimInLastYear' => false,  // $isClaimInLastYear ?? "",
-                        'previousNoClaimBonus' => $previousNoClaimBonus ?? 'ZERO',
+                        'previousNoClaimBonus' => $claim ?? 'ZERO',
                         'previousPolicyNumber' => $prevPolicyNo ?? '',
                         'isPreviousInsurerKnown' => $isPreviousInsurerKnown ?? null,
                         'originalPreviousPolicyType' => $previousPolicyTypeCodeCode,  // null,
@@ -1106,7 +1142,7 @@ class GoDigitCarService
                         'previousInsurerCode' => $previousInsurerCode ?? '',
                         'previousPolicyExpiryDate' => $sPrevexptoDate ?? '',
                         'isClaimInLastYear' => false,  // $isClaimInLastYear ?? "",
-                        'previousNoClaimBonus' => $previousNoClaimBonus ?? 'ZERO',
+                        'previousNoClaimBonus' => $claim ?? 'ZERO',
                         'previousPolicyNumber' => $prevPolicyNo ?? '',
                         'isPreviousInsurerKnown' => $isPreviousInsurerKnown ?? null,
                         'originalPreviousPolicyType' => $previousPolicyTypeCodeCode,  // null,
@@ -1126,7 +1162,7 @@ class GoDigitCarService
                         'previousInsurerCode' => $previousInsurerCode ?? '',
                         'previousPolicyExpiryDate' => $sPrevexptoDate ?? '',
                         'isClaimInLastYear' => false,  // $isClaimInLastYear ?? "",
-                        'previousNoClaimBonus' => $previousNoClaimBonus ?? 'ZERO',
+                        'previousNoClaimBonus' => $claim ?? 'ZERO',
                         'previousPolicyNumber' => $prevPolicyNo ?? '',
                         'isPreviousInsurerKnown' => $isPreviousInsurerKnown ?? null,
                         'originalPreviousPolicyType' => $previousPolicyTypeCodeCode,  // null,
@@ -1210,8 +1246,8 @@ class GoDigitCarService
                     'ckycReferenceNumber' => '',  // "ASDRR4277S",
                     'isKYCDone' => true,
                     'ckycReferenceDocId' => '',  // "D07",
-                    'successReturnURL' => 'https://uat.digibima.com/motor/car/vendor/godigit/journey',
-                    'failureReturnURL' => 'https://uat.digibima.com/motor/car/vendor/godigit/journey',
+                    'successReturnURL' => getconstant('MOTOR.GODIGIT.API.RETURNURL'),
+                    'failureReturnURL' => getconstant('MOTOR.GODIGIT.API.RETURNURL'),
                     'photo' => 'gfgh',
                     'dateOfBirth' => '',  // "1988-07-08"
                 ],
@@ -1364,11 +1400,11 @@ class GoDigitCarService
                     'isVehicleNew' => $NewVehicleType ?? null,
                     'licensePlateNumber' => $sRegNumber ?? '',
                     'registrationAuthority' => $sRegNoauth ?? '',
-                    'engineNumber' => $EngineNo ?? '',  // "ENG7654321",
-                    'vehicleIdentificationNumber' => $ChassisNo ?? '',  // "MA3EYD32S00654321",
+                    'engineNumber' => $EngineNo ?? '',
+                    'vehicleIdentificationNumber' => $ChassisNo ?? '',
                     'registrationDate' => $firstregdate ?? '',
                     'manufactureDate' => $firstregdate ?? '',
-                    'vehicleMaincode' => $oModel,  // "1112610616",//"1112611155",//"1111610313",
+                    'vehicleMaincode' => $oModel,
                     'vehicleIDV' => [
                         'idv' => $idv ?? 0
                     ]
@@ -1381,9 +1417,10 @@ class GoDigitCarService
             } else {
                 SaveFile($data, 'godigit_policy_json_request.txt');
             }
-
+            $url = getconstant('MOTOR.GODIGIT.API.POLICY');
+            $integartionid = getconstant('MOTOR.GODIGIT.INTEGRATIONID.POLICY');
             curl_setopt_array($curl, array(
-                CURLOPT_URL => 'https://oneapi.godigit.com/OneAPI/v1/executor',
+                CURLOPT_URL => $url,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
@@ -1393,7 +1430,7 @@ class GoDigitCarService
                 CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => $data,
                 CURLOPT_HTTPHEADER => array(
-                    'integrationId: 28096-0100',  // 24579-0100 //27634-0100
+                    'integrationId: ' . $integartionid,  // 24579-0100 //27634-0100
                     'Authorization: Bearer ' . $sToken,
                     'Content-Type: application/json'
                 ),
@@ -1421,7 +1458,7 @@ class GoDigitCarService
         $tokenResponse = GoDigitUtilityService::TokenGenerate();
         $tokenData = json_decode($tokenResponse, true);
         $accessToken = $tokenData['access_token'] ?? '';
-
+        $integartionid = getconstant('MOTOR.GODIGIT.INTEGRATIONID.PAYMENT');
         if (!$accessToken) {
             return response()->json([
                 'status' => false,
@@ -1443,8 +1480,8 @@ class GoDigitCarService
         // 🔹 Dynamic payload
         $payload = [
             'paymentMode' => 'EB',
-            'successReturnUrl' => 'https://insurance.digibima.com/motor/car/vendor/godigit/payment/thankyou',
-            'cancelReturnUrl' => 'https://insurance.digibima.com/motor/car/vendor/godigit/payment/thankyou',
+            'successReturnUrl' => getconstant('MOTOR.GODIGIT.API.PAYMENTRETURNURL'),
+            'cancelReturnUrl' => getconstant('MOTOR.GODIGIT.API.PAYMENTRETURNURL'),
             'applicationId' => $applicationId
         ];
 
@@ -1455,9 +1492,9 @@ class GoDigitCarService
 
         // 🔹 cURL init
         $curl = curl_init();
-
+        $url = getconstant('MOTOR.GODIGIT.API.PAYMENT');
         curl_setopt_array($curl, [
-            CURLOPT_URL => 'https://oneapi.godigit.com/OneAPI/v1/executor',
+            CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_ENCODING => '',
             CURLOPT_MAXREDIRS => 10,
@@ -1467,7 +1504,7 @@ class GoDigitCarService
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $postfields,
             CURLOPT_HTTPHEADER => [
-                'integrationId: 28099-0100',
+                'integrationId: ' . $integartionid,
                 'Authorization: Bearer ' . $accessToken,
                 'Content-Type: application/json'
             ],
@@ -1501,6 +1538,7 @@ class GoDigitCarService
         $tokenResponse = GoDigitUtilityService::TokenGenerate();
         $tokenData = json_decode($tokenResponse, true);
         $accessToken = $tokenData['access_token'] ?? '';
+        $integartionid = getconstant('MOTOR.GODIGIT.INTEGRATIONID.PAYMENTSTATUS');
         if (!$accessToken) {
             return response()->json([
                 'status' => false,
@@ -1519,7 +1557,7 @@ class GoDigitCarService
         }
 
         // 🔹 API URL
-        $url = 'https://oneapi.godigit.com/OneAPI/v1/executor';
+        $url = getconstant('MOTOR.GODIGIT.API.PAYMENTSTATUS');
 
         // 🔹 Payload
         $payload = [
@@ -1537,7 +1575,7 @@ class GoDigitCarService
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => json_encode($payload),
             CURLOPT_HTTPHEADER => [
-                'integrationId: 22795-0100',
+                'integrationId: ' . $integartionid,
                 'Content-Type: application/json',
                 'Authorization: Bearer ' . $accessToken,
             ],
@@ -1568,6 +1606,7 @@ class GoDigitCarService
         $tokenResponse = GoDigitUtilityService::TokenGenerate();
         $tokenData = json_decode($tokenResponse, true);
         $accessToken = $tokenData['access_token'] ?? '';
+        $integartionid = getconstant('MOTOR.GODIGIT.INTEGRATIONID.PDF');
         if (!$accessToken) {
             return response()->json([
                 'status' => false,
@@ -1583,7 +1622,7 @@ class GoDigitCarService
         }
 
         // 🔹 API URL
-        $url = 'https://oneapi.godigit.com/OneAPI/v1/executor';
+        $url = getconstant('MOTOR.GODIGIT.API.PDF');
 
         // 🔹 Payload
         $payload = [
@@ -1599,7 +1638,7 @@ class GoDigitCarService
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => json_encode($payload),
             CURLOPT_HTTPHEADER => [
-                'integrationId: 28100-0100',
+                'integrationId: ' . $integartionid,
                 'Content-Type: application/json',
                 'Authorization: Bearer ' . $accessToken,
             ],

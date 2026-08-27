@@ -1,7 +1,10 @@
 <?php
 namespace App\Services\Api\godigit;
 
-use App\Models\{Master_Vehicle_Data as DataModel, MasterAPI, User, MotorJourney, MasterVendor, VendorMotor, MasterMotor, UserMotorDescription};
+use App\Http\Controllers\Api\front\motor\Vendor\shriram\Bike\ShriramBikeController;
+use App\Http\Controllers\Api\front\motor\Vendor\shriram\Car\ShriramCarController;
+use App\Models\Shriram\{Shriram_Pincode, Shriram_planCheckout, Shriram_RTO_Master, Shriram_Prev_insurence, Shriram_Vehicle_Master};
+use App\Models\{Master_Vehicle_Data as DataModel, MasterAPI, User, MotorJourney, MasterVendor, VendorMotor, MasterMotor, UserMotorDescription, Vehicle_Info};
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Auth, Cache};
@@ -10,14 +13,18 @@ use stdClass;
 
 class GoDigitUtilityService
 {
-    public static $Username = 'HkMfH+mws05z5uOSCEpeTQ==';
-    public static $Password = 'lI42Enh/ZY2vXqQYAgbrKa3pRWoTMOyqPwMwexnF3uo=';
+    // public static $Username = '35327650';
+    // public static $Password = 'WrE3GukZIzSDKYOotFZ';
 
     public static function TokenGenerate()
     {
+        $url = getconstant('MOTOR.GODIGIT.API.TOKEN');
         $curl = curl_init();
+        $Username = getconstant('MOTOR.GODIGIT.CREDENTIAL.TOKENUSERNAME');
+        $Password = getconstant('MOTOR.GODIGIT.CREDENTIAL.TOKENPASSWORD');
+        // dd($Username, $Password, $url);
         curl_setopt_array($curl, array(
-            CURLOPT_URL => 'https://oneapi.godigit.com/OneAPI/v1/auth',
+            CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_ENCODING => '',
             CURLOPT_MAXREDIRS => 10,
@@ -26,31 +33,28 @@ class GoDigitUtilityService
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
             CURLOPT_CUSTOMREQUEST => 'POST',
             CURLOPT_POSTFIELDS => json_encode([
-                'username' => self::$Username,
-                'password' => self::$Password
+                'username' => $Username,
+                'password' => $Password
             ]),
             CURLOPT_HTTPHEADER => array(
-                'Content-Type: application/json',
-                'Cookie:TS0198aefb=0138ecebf96f9531dbd1898da30784872bcbd4f716d17f5423e48c53afadbbb5cfac82ca74daafc65c6421f6c98b5da9a11308e8cc; TS017fdda2=0138ecebf9c712e9cc47f6c40dc63ff7f013cbbdf802e1651129751c8fef1eeb0ffd0be127c7edc77edfc0fdd4e7f15cedd85f8db8; Application=oneapi; TS017fdda2=0138ecebf9854330d85d57fce53cfa7c20a7f0ead02a95d7266385fbe072793808ef37cac4cd4423a656beec0d10914ef91a825bca'
+                'Content-Type: application/json'
             ),
         ));
 
         $response = curl_exec($curl);
-
         curl_close($curl);
+        // dd($response);
         return $response;
     }
 
     public static function KycTokenGenerate()
     {
-        // "username": "35327650",
-        // "password": "Digit@123$"
-
-        //  "username": "10239856",
-        //     "password": "To6nkOaHNx4TImzvEX3"
+        $url = getconstant('MOTOR.GODIGIT.API.KYCTOKEN');
+        $Username = getconstant('MOTOR.GODIGIT.CREDENTIAL.TOKENUSERNAME');
+        $Password = getconstant('MOTOR.GODIGIT.CREDENTIAL.TOKENPASSWORD');
         $curl = curl_init();
         curl_setopt_array($curl, array(
-            CURLOPT_URL => 'https://oneapi.godigit.com/OneAPI/digit/generateAuthKey',
+            CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_ENCODING => '',
             CURLOPT_MAXREDIRS => 10,
@@ -59,8 +63,8 @@ class GoDigitUtilityService
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
             CURLOPT_CUSTOMREQUEST => 'POST',
             CURLOPT_POSTFIELDS => json_encode([
-                'username' => self::$Username,
-                'password' => self::$Password
+                'username' => $Username,
+                'password' => $Password
             ]),
             CURLOPT_HTTPHEADER => array(
                 'Content-Type: application/json'
@@ -92,9 +96,7 @@ class GoDigitUtilityService
     {
         try {
             $userId = $request->userid;
-            // return $userId;
             $sNewToken = self::KycTokenGenerate();
-            // return $sNewToken;
             $sToken = json_decode($sNewToken, true);
             $sToken = $sToken ? $sToken['access_token'] : '';
             $sDocdetails = UserMotorDescription::where('userid', $userId);
@@ -102,14 +104,9 @@ class GoDigitUtilityService
             $sdoctype = $sDocdetails->first('idnumber');
             $filePath = json_decode($aDocument->document, true);
             $identityPhotoB64 = self::FileIntoBase64($filePath['identity']['identityfront']);
-            // $identitybackB64 = self::FileIntoBase64($filePath['identity']['identityback']);
             $addressPhotoB64 = self::FileIntoBase64($filePath['address']['addressfront']);
-            // $addressBackB64 = self::FileIntoBase64($filePath['address']['addressback']);
             self::initlize();
-
-            // return $identityPhotoB64['based64'];
-            // return $addressPhotoB64['based64'];
-
+            $integartionid = getconstant('MOTOR.GODIGIT.INTEGRATIONID.OVDKYC');
             $postfeilds = json_encode(
                 [
                     'kYCServiceKYCUpdationAPI' => [
@@ -118,7 +115,7 @@ class GoDigitUtilityService
                             'policyNumber' => $nProposalNo,  // "D700593703",//"D601494528",// // D700593746
                         ],
                         'externalReferenceNumber' => 'edldldfkfk34g',
-                        'agentCode' => '1000295',
+                        'agentCode' => getconstant('MOTOR.GODIGIT.CREDENTIAL.AGENTCODE'),
                         'policyHolderType' => 'Individual',
                         'dateOfBirth' => '1996-07-19',
                         'idVerificationDocType' => 'D25',
@@ -126,16 +123,16 @@ class GoDigitUtilityService
                         'addressVerificationDocType' => 'D25',
                         'addressVerificationDoc' => [$addressPhotoB64['based64'], $addressPhotoB64['based64']],
                         'gender' => 'M',
-                        'successReturnURL' => 'http://192.168.29.219:3000/motor/car/vendor/godigit/journey',
-                        'failureReturnURL' => 'http://192.168.29.219:3000/motor/car/vendor/godigit/journey'
+                        'successReturnURL' => getconstant('MOTOR.GODIGIT.API.RETURNURL'),
+                        'failureReturnURL' => getconstant('MOTOR.GODIGIT.API.RETURNURL')
                     ]
                 ]
             );
-            // return $postfeilds;
+            $url = getconstant('MOTOR.GODIGIT.API.OVDKYC');
             $curl = curl_init();
 
             curl_setopt_array($curl, array(
-                CURLOPT_URL => 'https://preprod-oneapi.godigit.com/OneAPI/v1/executor',
+                CURLOPT_URL => $url,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
@@ -145,7 +142,7 @@ class GoDigitUtilityService
                 CURLOPT_CUSTOMREQUEST => 'POST',
                 CURLOPT_POSTFIELDS => $postfeilds,
                 CURLOPT_HTTPHEADER => array(
-                    'integrationId: 23553-0100',  // 16730-0100
+                    'integrationId: ' . $integartionid,
                     'Authorization: Bearer ' . $sToken,
                     'Content-Type: application/json',
                 ),
@@ -169,6 +166,7 @@ class GoDigitUtilityService
         $sToken = json_decode($sNewToken, true);
         $sToken = $sToken ? $sToken['access_token'] : '';
         $policyNumber = $nProposalNo;
+        $integartionid = getconstant('MOTOR.GODIGIT.INTEGRATIONID.KYCSTATUS');
         sleep(3);
         $payload = json_encode([
             'queryParam' => [
@@ -176,9 +174,10 @@ class GoDigitUtilityService
             ]
         ]);
         SaveFile($payload, 'godigit_kysstatus_payload.txt');
+        $url = getconstant('MOTOR.GODIGIT.API.KYCSTATUS');
         $curl = curl_init();
         curl_setopt_array($curl, array(
-            CURLOPT_URL => 'https://preprod-oneapi.godigit.com/OneAPI/v1/executor',
+            CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_ENCODING => '',
             CURLOPT_MAXREDIRS => 10,
@@ -188,7 +187,7 @@ class GoDigitUtilityService
             CURLOPT_CUSTOMREQUEST => 'POST',
             CURLOPT_POSTFIELDS => $payload,
             CURLOPT_HTTPHEADER => array(
-                'integrationId: 28098-0100',  // 16730-0100 //27637-0100
+                'integrationId: ' . $integartionid,  // 16730-0100 //27637-0100
                 'Authorization: Bearer ' . $sToken,
                 'Content-Type: application/json',
             ),
@@ -205,17 +204,16 @@ class GoDigitUtilityService
         $sNewToken = self::TokenGenerate();
         $sToken = json_decode($sNewToken, true);
         $sToken = $sToken ? $sToken['access_token'] : '';
-        // return $sToken;
-        // $policyNumber = "D700593703";
+        $integartionid = getconstant('MOTOR.GODIGIT.INTEGRATIONID.POLICYSTATUS');
         $payload = json_encode([
             'queryParam' => [
                 'policyNumber' => $policyNumber,
             ]
         ]);
-
+        $url = getconstant('MOTOR.GODIGIT.API.POLICYSTATUS');
         $curl = curl_init();
         curl_setopt_array($curl, array(
-            CURLOPT_URL => 'https://preprod-oneapi.godigit.com/OneAPI/v1/executor',
+            CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_ENCODING => '',
             CURLOPT_MAXREDIRS => 10,
@@ -225,7 +223,7 @@ class GoDigitUtilityService
             CURLOPT_CUSTOMREQUEST => 'POST',
             CURLOPT_POSTFIELDS => $payload,
             CURLOPT_HTTPHEADER => array(
-                'integrationId: 28098-0100',  // 16730-0100 //27636-0100
+                'integrationId: ' . $integartionid,  // 16730-0100 //27636-0100
                 'Authorization: Bearer ' . $sToken,
                 'Content-Type: application/json',
             ),
@@ -242,17 +240,17 @@ class GoDigitUtilityService
         $sNewToken = self::TokenGenerate();
         $sToken = json_decode($sNewToken, true);
         $sToken = $sToken ? $sToken['access_token'] : '';
-
+        $integartionid = getconstant('MOTOR.GODIGIT.INTEGRATIONID.PDF');
         $payload = json_encode([
             'policyId' => $policyId,
             'headerParam' => [
                 'Authorization' => $sToken
             ]
         ]);
+        $url = getconstant('MOTOR.GODIGIT.API.PDF');
         $curl = curl_init();
-
         curl_setopt_array($curl, array(
-            CURLOPT_URL => 'https://preprod-oneapi.godigit.com/OneAPI/v1/executor',
+            CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_ENCODING => '',
             CURLOPT_MAXREDIRS => 10,
@@ -262,14 +260,12 @@ class GoDigitUtilityService
             CURLOPT_CUSTOMREQUEST => 'POST',
             CURLOPT_POSTFIELDS => $payload,
             CURLOPT_HTTPHEADER => array(
-                'integrationId: 28100-0100',
+                'integrationId: ' . $integartionid,
                 'Content-Type: application/json',
                 'Authorization: Bearer ' . $sToken,
             ),
         ));
-
         $response = curl_exec($curl);
-
         curl_close($curl);
         return $response;
     }
