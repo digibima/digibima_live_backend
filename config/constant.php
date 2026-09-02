@@ -2,16 +2,15 @@
 
 use App\Models\User;
 
-
 $SITE_URL = env('APP_URL', '');
 $BASE_URL = $SITE_URL;
 // $BASE_URL = $SITE_URL . 'public/';
-//$BASE_URL              = 'http://127.0.0.1:80/insurance/public/';
+// $BASE_URL              = 'http://127.0.0.1:80/insurance/public/';
 return [
     'SITE_URL' => $SITE_URL,
     'BASE_URL' => $BASE_URL,
     'IMAGE' => $BASE_URL . 'upload/',
-    //front
+    // front
     'FRONT_URL' => $BASE_URL . 'front/',
     'PDFDATA' => [
         'care' => [
@@ -45,13 +44,12 @@ return [
         'Days' => 'Days',
         'Day' => 'Day',
     ],
-
     'MESSAGE' =>
         [
-            "ONPAYMENT" => 'Your Policy Created Successfully',
-            "ONLOGIN" => "Last login",
-            "ONLOGOUT" => "Last logout",
-            "ONPOLICYFAILURE" => "Creating policy failed"
+            'ONPAYMENT' => 'Your Policy Created Successfully',
+            'ONLOGIN' => 'Last login',
+            'ONLOGOUT' => 'Last logout',
+            'ONPOLICYFAILURE' => 'Creating policy failed'
         ],
     'CAREDISEASE' => [
         '11' => ' Cancer or Tumor of any kind?',
@@ -74,9 +72,8 @@ return [
         '23' => 'Is any of the person(s) to be insured, already covered under any other health insurance policy of Care Health Insurance ?',
         '24' => 'Already covered',
         '25' => 'Have any of the above mentioned person(s) to be insured been diagnosed / hospitalized for any illness / injury during the last 48 months?',
-
     ],
-    "LIFESTYLE" => [
+    'LIFESTYLE' => [
         '31' => 'Personal habit of smoking/ alcohol/gutkha/ tobacco/paan?',
         // '32' => 'Bidis',
         // '33' => 'Gutkha or Pan',
@@ -85,7 +82,6 @@ return [
         // '36' => 'Beer',
         // '37' => 'Any other type of Drugs',
     ],
-
     'INSURANCE' => [
         'CARE' => '100',
         '100' => 'CARE',
@@ -98,7 +94,6 @@ return [
         'PCCV' => 'MOT-PRD-005',
         'GCCV' => 'MOT-PRD-003'
     ],
-
     'HEALTH' => [
         'COVERAGE' => [5, 7, 10, 15, 20, 25, 50, 75, 100, 'UNLIMITED'],
         'TENURE' => [1, 2, 3],
@@ -129,7 +124,6 @@ return [
                     'FATHERINLAW' => 'FLAW',
                     'MOTHERINLAW' => 'MLAW'
                 ],
-
                 'ADDON' => [
                     'aa' => 'Air Ambulance',
                     'wb' => 'Wellness Benefit',
@@ -143,7 +137,6 @@ return [
                     'uc' => 'Unlimited Care'
                 ],
             ],
-
         'ULTIMATECARE' => [
             'KEY' => '102',
             'ADDON' => [
@@ -175,7 +168,7 @@ return [
                 'cs' => 'Claim Shield',
                 'opd' => 'Care OPD',
                 'pwpm' => 'PED Wait Period Modification',
-                //'befit' => 'befit'
+                // 'befit' => 'befit'
             ],
         ],
         'BAJAJ' => [
@@ -257,7 +250,6 @@ return [
                 'GCEE' => 'Geographical extension',
             ],
             'ADDON_NAME_CODE_MAP' => [
-
                 'In-patient Hospitalization' => 'IPTT',
                 'Road Ambulance Cover (per hospitalization)' => 'RACV',
                 'Modern Procedures/Treatments' => 'MTAT',
@@ -310,10 +302,8 @@ return [
                 'Tele – OPD consultation' => 'TELEOPD',
                 'OPD Add-On' => 'OPDADON',
                 'Geographical extension' => 'GCEE',
-
             ],
             'PLAN_ADDONS' => [
-
                 'MassMarket' => [
                     'RISW',
                     'RIPW',
@@ -328,7 +318,6 @@ return [
                     'TELEOPD',
                     'RRTO'
                 ],
-
                 'Digital' => [
                     'RISW',
                     'RIPW',
@@ -348,7 +337,6 @@ return [
                     // 'OBTR',
                     // 'RRTO'
                 ],
-
                 'MassMarket_Plus' => [
                     'RISW',
                     'RIPW',
@@ -362,7 +350,6 @@ return [
                     'TELEOPD',
                     'RRTO'
                 ],
-
                 'SAVR' => [
                     'RISW',
                     'RIPW',
@@ -377,7 +364,6 @@ return [
                     'TELEOPD',
                     'RRTO'
                 ],
-
                 'CHRONIC' => [
                     'RISW',
                     'RIPW',
@@ -393,19 +379,18 @@ return [
                     'CHRREST',
                     'RRTO'
                 ],
-
             ],
             'RELATIONCODE' => [
-                    'SELF' => 'SELF',
-                    'HUSBAND' => 'SPSE',
-                    'WIFE' => 'SPSE',
-                    'SON' => 'SONM',
-                    'DAUGHTER' => 'UDTR',
-                    'FATHER' => 'FATH',
-                    'MOTHER' => 'MOTH',
-                    'FATHERINLAW' => 'FLAW',
-                    'MOTHERINLAW' => 'MLAW'
-                ],
+                'SELF' => 'SELF',
+                'HUSBAND' => 'SPSE',
+                'WIFE' => 'SPSE',
+                'SON' => 'SONM',
+                'DAUGHTER' => 'UDTR',
+                'FATHER' => 'FATH',
+                'MOTHER' => 'MOTH',
+                'FATHERINLAW' => 'FLAW',
+                'MOTHERINLAW' => 'MLAW'
+            ],
             'CREDENTIAL' => [
                 'AESKEY' => 'fdc36aef0618933aebc4508a93245760',
                 'AUTHORIZATION' => '06754239a8054cbea3398160fea63cdf',
@@ -416,7 +401,7 @@ return [
             ]
         ]
     ],
-    //--------------------------------------------------------------MOTOR-------------------------------------------------------------------
+    // --------------------------------------------------------------MOTOR-------------------------------------------------------------------
     'MOTOR' =>
         [
             'PLANTYPE' => ['1' => 'OWN DAMAGE', '2' => 'COMPREHENSIVE', '3' => 'THIRD PARTY', '4' => 'BUNDLED'],
@@ -497,20 +482,26 @@ return [
                     'PCCV' => 'MOT-PRD-005',
                     'GCCV' => 'MOT-PRD-003'
                 ],
-
                 'PROPOSALTYPE' => [
                     'FRESHPROPOSAL' => 'FRESH',
                     'MARKETRENEWAL' => 'RENEWAL OF OTHERS',
                     'MARKET_RENEWAL_WITHOUT_PREVIOUS_INSURANCE_HISTORY' => 'RENEWAL.WO.PRV INS DTL',
                 ],
+                'API' => [
+                    'PRIVATECARQUOTE' => 'https://nsecureapi.shriramgi.com/NOVADIGITAL/SVS_Services/PolicyGeneration.svc/RestService/GetQuote',
+                    'PRIVATECARPOLICY' => 'https://nsecureapi.shriramgi.com/NOVADIGITAL/SVS_Services/PolicyGeneration.svc/RestService/GenerateProposal',
+                    'PDF' => '',
+                    'PAYMENT' => '',
+                    'PAYMENTSTATUS' => 'http://novaapiuat.shriramgi.com/UATNovaWS/novaServices/WebAggregator.svc/RestService/getPaymentStatus',
+                    'OVDKYC' => ''
+                ],
                 'CREDENTIAL' => [
                     'USERNAME' => 'DIGIBIMA',
-                    //'USERNAME' => 'NiveshIns',
+                    // 'USERNAME' => 'NiveshIns',
                     'PASSWORD' => 'shriram@1',
                 ]
             ],
             'GODIGIT' => [
-
                 'KEY' => '103',
                 'TITLE' => 'Godigit general',
                 'BIKE' => [
@@ -521,7 +512,6 @@ return [
                         'BUNDLED' => '20201',
                     ],
                 ],
-
                 'CAR' => [
                     'POLICYTYPE' => [
                         'PACKAGE' => '20101',
@@ -530,7 +520,6 @@ return [
                         'BUNDLED' => '20101',
                     ],
                 ],
-
                 'PRODUCTTYPE' => [
                     'TWOWHEELER' => 'MOT-PRD-002',
                     'PRIVATECAR' => 'MOT-PRD-001',
@@ -543,13 +532,45 @@ return [
                     'PCCV' => 'MOT-PRD-005',
                     'GCCV' => 'MOT-PRD-003'
                 ],
-
                 'PROPOSALTYPE' => [
                     'BIKEFRESHPROPOSAL' => '51',
                     'CARFRESHPROPOSAL' => '31',
                     'MARKETRENEWAL' => 'PB',
                 ],
-
+                'API' => [
+                    'QUOTE' => 'https://oneapi.godigit.com/OneAPI/v1/executor',
+                    'POLICY' => 'https://oneapi.godigit.com/OneAPI/v1/executor',
+                    'POLICYSTATUS' => 'https://oneapi.godigit.com/OneAPI/v1/executor',
+                    'PAYMENT' => 'https://oneapi.godigit.com/OneAPI/v1/executor',
+                    'TOKEN' => 'https://oneapi.godigit.com/OneAPI/v1/auth',
+                    'KYCTOKEN' => 'https://oneapi.godigit.com/OneAPI/v1/auth',
+                    'OVDKYC' => 'https://oneapi.godigit.com/OneAPI/v1/executor',
+                    'KYCSTATUS' => 'https://oneapi.godigit.com/OneAPI/v1/executor',
+                    'PAYMENTSTATUS' => 'https://oneapi.godigit.com/OneAPI/v1/executor',
+                    'PDF' => 'https://oneapi.godigit.com/OneAPI/v1/executor',
+                    'KYC' => 'https://oneapi.godigit.com/OneAPI/v1/executor',
+                    'RETURNURL' => 'https://insurance.digibima.com/motor/car/vendor/godigit/journey',
+                    'PAYMENTRETURNURL' => 'https://insurance.digibima.com/motor/car/vendor/godigit/payment/thankyou',
+                ],
+                'INTEGRATIONID' => [
+                    'QUOTE' => '28094-0100',
+                    'POLICY' => '28096-0100',
+                    'POLICYSTATUS' => '28098-0100',
+                    'OVDKYC' => '23553-0100',
+                    'KYCSTATUS' => '28098-0100',
+                    'PAYMENT' => '28099-0100',
+                    'PAYMENTSTATUS' => '22795-0100',
+                    'PDF' => '22793-0100',
+                    'KYC' => '',
+                ],
+                'CREDENTIAL' => [
+                    'USERNAME' => '67160562',
+                    'PASSWORD' => '4IS1AmEmnIEAF9u6i3a',
+                    'TOKENUSERNAME' => 'HkMfH+mws05z5uOSCEpeTQ==',
+                    'TOKENPASSWORD' => 'lI42Enh/ZY2vXqQYAgbrKa3pRWoTMOyqPwMwexnF3uo=',
+                    'AGENTCODE' => '1000295',
+                    'IMD' => '1188421'
+                ]
             ],
             'ZUNO' => [
                 'KEY' => '107',
@@ -572,7 +593,6 @@ return [
                     'PCCV' => 'MOT-PRD-005',
                     'GCCV' => 'MOT-PRD-003'
                 ],
-
                 'PROPOSALTYPE' => [
                     'FRESHPROPOSAL' => 'New',
                     'MARKETRENEWAL' => 'Rollover',
@@ -602,7 +622,7 @@ return [
                 'POLICYTYPE' => [
                     'NB' => '1',
                     'OTHER' => '3',
-                    "Renewal" => '2'
+                    'Renewal' => '2'
                 ],
                 'ADDON_PACKAGE_NAME_BIKE' => [
                     [
@@ -675,8 +695,6 @@ return [
                         ]
                     ]
                 ],
-
             ]
         ],
-
 ];

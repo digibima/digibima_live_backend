@@ -13,7 +13,7 @@ class GoDigitCarService
 {
     private static $Username;
     private static $Password;
-    private static $allAddon = ['101', '102', '109', '111', '107', '108', '110', '104', '103', '106', '119', '116', '122', '121', '120'];
+    private static $allAddon = ['101', '102', '109', '111', '107', '108', '110', '104', '105', '103', '106', '114', '115', '119', '116', '117', '118', '122', '121', '120', '124', '126', '132', '133'];
 
     public static function initlize()
     {
@@ -25,6 +25,26 @@ class GoDigitCarService
     {
         $rand = rand(111111, 9999999);
         return $rand;
+    }
+
+    public static function getClaim($userId)
+    {
+        $vahanresponse = GetCache($userId . '_vahandata');
+        $vahanresponse = json_decode($vahanresponse, true);
+        $vahanregdate = $vahanresponse['registration_date'] ?? null;
+        $monthsfromtoday = Carbon::parse($vahanregdate)
+            ->diffInMonths(Carbon::parse(today()->format('Y-m-d')));
+        $claim = match (true) {
+            $monthsfromtoday <= 12 * 1 => 'ZERO',
+            $monthsfromtoday <= 12 * 2 && $monthsfromtoday >= 12 * 1 => 'TWENTY',
+            $monthsfromtoday <= 12 * 3 && $monthsfromtoday >= 12 * 2 => 'TWENTY',
+            $monthsfromtoday <= 12 * 4 && $monthsfromtoday >= 12 * 3 => 'TWENTY_FIVE',
+            $monthsfromtoday <= 12 * 5 && $monthsfromtoday >= 12 * 4 => 'THIRTY_FIVE',
+            $monthsfromtoday <= 12 * 6 && $monthsfromtoday >= 12 * 5 => 'FORTY_FIVE',
+            $monthsfromtoday >= 12 * 6 => 'FIFTY',
+            default => 'ZERO',
+        };
+        return $claim;
     }
 
     public static function AddonHandler($addons = [])
@@ -84,6 +104,11 @@ class GoDigitCarService
         ];
     }
 
+    public static function GetAddons()
+    {
+        return self::$allAddon;
+    }
+
     public static function generateCarQuote(Request $request, $nPlanType)
     {
         // return ['satus' => false];
@@ -110,10 +135,11 @@ class GoDigitCarService
                         )
                 );
             $aAddons = self::AddonHandler($aAddons);
+            $claim = self::getClaim($userId);
             $today = now();
             self::initlize();
             $oModel = null;
-            $claim = null;
+            // $claim = null;
             $claimper = null;
             $transferOfowner = null;
             $firstregdate = null;
@@ -159,7 +185,7 @@ class GoDigitCarService
             $subInsuranceProductCode = '';
             $sinsuranceProductCode = '';
             $isClaimInLastYear = '';
-            $previousNoClaimBonus = '';
+            $previousNoClaimBonus = $claim;
             $oJourneyData = MotorJourney::where('userid', $userId)->where('is_car', '1')->first();
             $prevoiusPolicyDetails = isset($oJourneyData->pre_policy_details) ? json_decode($oJourneyData->pre_policy_details, true) : null;
             $rValue = self::genRandomNumber();
@@ -177,22 +203,13 @@ class GoDigitCarService
             $plantype = $aData->car_plan_type;
             $idv = $plantype == '3' ? 0 : GetCache($cachecaridv);
             $cachemotortype = 'cache_motortype_' . $userId;
-            $vahanresponse = GetCache($userId . '_vahandata');
-            $vahanresponse = json_decode($vahanresponse, true);
-            $vahanregdate = $vahanresponse['registration_date'] ?? null;
-            $monthsfromtoday = Carbon::parse($vahanregdate)
-                ->diffInMonths(Carbon::parse(today()->format('Y-m-d')));
-            $claim = match (true) {
-                $monthsfromtoday <= 12 * 1 => 'ZERO',
-                $monthsfromtoday <= 12 * 2 && $monthsfromtoday >= 12 * 1 => 'TWENTY',
-                $monthsfromtoday <= 12 * 3 && $monthsfromtoday >= 12 * 2 => 'TWENTY',
-                $monthsfromtoday <= 12 * 4 && $monthsfromtoday >= 12 * 3 => 'TWENTY_FIVE',
-                $monthsfromtoday <= 12 * 5 && $monthsfromtoday >= 12 * 4 => 'THIRTY_FIVE',
-                $monthsfromtoday <= 12 * 6 && $monthsfromtoday >= 12 * 5 => 'FORTY_FIVE',
-                $monthsfromtoday >= 12 * 6 => 'FIFTY',
-                default => 'ZERO',
-            };
+            // $vahanresponse = GetCache($userId . '_vahandata');
+            // $vahanresponse = json_decode($vahanresponse, true);
+            // $vahanregdate = $vahanresponse['registration_date'] ?? null;
+            // $monthsfromtoday = Carbon::parse($vahanregdate)
+            //     ->diffInMonths(Carbon::parse(today()->format('Y-m-d')));
 
+            // dd($claim);
             if (GetCache($cachemotortype) == 'knowcar') {
                 $aCardata = json_decode($aData->knowcar_reg_details, true) ?? [];
                 $modelSearch = $aCardata['model'] ?? '';
@@ -331,21 +348,21 @@ class GoDigitCarService
                 }
                 $regdate = array_key_exists('carregdate', $aCardata) ? $aCardata['carregdate'] : '';
                 $firstregdate = \DateTime::createFromFormat('d-m-Y', $regdate)->format('Y-m-d');
-                $claim = array_key_exists('policytoggle', $aCardata) ? '0' : '1';
+                // $claim = array_key_exists('policytoggle', $aCardata) ? '0' : '1';
                 $claimper = array_key_exists('bonus-button', $aCardata) ? $aCardata['bonus-button'] : '0';
                 $transferOfowner = array_key_exists('ownershiptoggle', $aCardata) ? $aCardata['ownershiptoggle'] : '0';
-                $claimMap = [
-                    0 => 'ZERO',
-                    20 => 'TWENTY',
-                    25 => 'TWENTY_FIVE',
-                    35 => 'THIRTY_FIVE',
-                    45 => 'FORTY_FIVE',
-                    50 => 'FIFTY',
-                    55 => 'FIFTY_FIVE',
-                    65 => 'SIXTY_FIVE',
-                ];
+                // $claimMap = [
+                //     0 => 'ZERO',
+                //     20 => 'TWENTY',
+                //     25 => 'TWENTY_FIVE',
+                //     35 => 'THIRTY_FIVE',
+                //     45 => 'FORTY_FIVE',
+                //     50 => 'FIFTY',
+                //     55 => 'FIFTY_FIVE',
+                //     65 => 'SIXTY_FIVE',
+                // ];
 
-                $claimperString = $claimMap[$claimper] ?? null;
+                $claimperString = null;
 
                 // return $transferOfowner;
             }
@@ -432,6 +449,7 @@ class GoDigitCarService
                             'currentThirdPartyPolicyExpiryDateTime' => $sPretptoDate ?? ''
                         ]
                     ];
+                    // dd($previousInsurer,$claim);
                 }
                 if ($nPlanType == '2') {
                     $sinsuranceProductCode = getconstant('MOTOR.GODIGIT.CAR.POLICYTYPE.PACKAGE');
@@ -836,21 +854,12 @@ class GoDigitCarService
 
             $today = now();
             $claimperString = null;
-            $vahanresponse = GetCache($userId . '_vahandata');
-            $vahanresponse = json_decode($vahanresponse, true);
-            $vahanregdate = $vahanresponse['registration_date'] ?? null;
-            $monthsfromtoday = Carbon::parse($vahanregdate)
-                ->diffInMonths(Carbon::parse(today()->format('Y-m-d')));
-            $claim = match (true) {
-                $monthsfromtoday <= 12 * 1 => 'ZERO',
-                $monthsfromtoday <= 12 * 2 && $monthsfromtoday >= 12 * 1 => 'TWENTY',
-                $monthsfromtoday <= 12 * 3 && $monthsfromtoday >= 12 * 2 => 'TWENTY',
-                $monthsfromtoday <= 12 * 4 && $monthsfromtoday >= 12 * 3 => 'TWENTY_FIVE',
-                $monthsfromtoday <= 12 * 5 && $monthsfromtoday >= 12 * 4 => 'THIRTY_FIVE',
-                $monthsfromtoday <= 12 * 6 && $monthsfromtoday >= 12 * 5 => 'FORTY_FIVE',
-                $monthsfromtoday >= 12 * 6 => 'FIFTY',
-                default => 'ZERO',
-            };
+            // $vahanresponse = GetCache($userId . '_vahandata');
+            // $vahanresponse = json_decode($vahanresponse, true);
+            // $vahanregdate = $vahanresponse['registration_date'] ?? null;
+            // $monthsfromtoday = Carbon::parse($vahanregdate)
+            //     ->diffInMonths(Carbon::parse(today()->format('Y-m-d')));
+            $claim = self::getClaim($userId);
             if (GetCache($cachemotortype) == 'knowcar') {
                 // $cachemodel = 'cache_model_knowcar' . $userId;
                 $aCardata = json_decode($aData->knowcar_reg_details, true) ?? [];
@@ -867,12 +876,10 @@ class GoDigitCarService
             $regDate = \DateTime::createFromFormat('Y-m-d', $dRegDate);
             $vid = getconstant('MOTOR.GODIGIT.KEY');
             $vdata = getVcode($modelSearch, $vid, 'MOT-PRD-001', 'App\Models\Master\Godigit');
-
             $oModel = $vdata['status'] && isset($vdata['data']->vcode) ? $vdata['data']->vcode : $vdata['data'];
             if (!$vdata['status']) {
                 return $oModel;
             }
-
             $addonAgeLimit = [
                 '101' => 7,
                 '103' => 10,
@@ -889,12 +896,10 @@ class GoDigitCarService
             $aNominee = json_decode($oJourneyData->nominee_details, true) ?? [];
             $permanentAddress = json_decode($oJourneyData->permanent_address, true) ?? [];
             $ContactDetails = json_decode($oJourneyData->contact_details, true) ?? [];
-
-            $pincode = $permanentAddress['pincode'] ?? '';
-
+            // dd($ContactDetails);
+            $pincode = $permanentAddress['pincode'];
             $state = Godigit_pincode::where('Pincode', $pincode)->first();
             // return $state['Statecode'];
-            // dd($state);
             $sState = $state['Statecode'];
             $nPlanType = $aData->car_plan_type;
             $dRegDate = $aData->knowcar_reg_details ? json_decode($aData->knowcar_reg_details, true)['carregdate'] : date('d-m-Y');
@@ -943,7 +948,6 @@ class GoDigitCarService
                 $firstregdate = \DateTime::createFromFormat('d-m-Y', $sRegdate)->format('Y-m-d');
             }
             // return $firstregdate;
-
             $previousPolicyTypeCodeCode = null;
             if (GetCache($cachemotortype) == 'knowcar') {
                 if ($aCardata['prepolitype'] == 'odonly') {
@@ -1001,7 +1005,7 @@ class GoDigitCarService
             $sinsuranceProductCode = null;
             $subInsuranceProductCode = null;
             $NewVehicleType = null;
-            $previousNoClaimBonus = null;
+            $previousNoClaimBonus = $claim;
             $previousPolicyNumber = '';
             $isClaimInLastYear = null;
             $isPreviousInsurerKnown = null;
@@ -1044,22 +1048,22 @@ class GoDigitCarService
                 }
             }
             if (GetCache($cachemotortype) == 'knowcar') {
-                $claim = array_key_exists('policytoggle', $aCardata) ? '0' : '1';
+                // $claim = array_key_exists('policytoggle', $aCardata) ? '0' : '1';
                 $claimper = array_key_exists('bonus-button', $aCardata) ? $aCardata['bonus-button'] : '0';
                 $transferOfowner = array_key_exists('ownershiptoggle', $aCardata) ? $aCardata['ownershiptoggle'] : '0';
 
-                $claimMap = [
-                    0 => 'ZERO',
-                    20 => 'TWENTY',
-                    25 => 'TWENTY_FIVE',
-                    35 => 'THIRTY_FIVE',
-                    45 => 'FORTY_FIVE',
-                    50 => 'FIFTY',
-                    55 => 'FIFTY_FIVE',
-                    65 => 'SIXTY_FIVE',
-                ];
+                // $claimMap = [
+                //     0 => 'ZERO',
+                //     20 => 'TWENTY',
+                //     25 => 'TWENTY_FIVE',
+                //     35 => 'THIRTY_FIVE',
+                //     45 => 'FORTY_FIVE',
+                //     50 => 'FIFTY',
+                //     55 => 'FIFTY_FIVE',
+                //     65 => 'SIXTY_FIVE',
+                // ];
 
-                $claimperString = $claimMap[$claimper] ?? null;
+                $claimperString = null;
                 $NewVehicleType = false;
                 // $prevInsurCmpny = Godigit_Prev_Ins::where('id', $prevPolicydata['prevInsuranceId'])->first()->no;
                 // $previousInsurerCode = $prevInsurCmpny;
@@ -1400,11 +1404,11 @@ class GoDigitCarService
                     'isVehicleNew' => $NewVehicleType ?? null,
                     'licensePlateNumber' => $sRegNumber ?? '',
                     'registrationAuthority' => $sRegNoauth ?? '',
-                    'engineNumber' => $EngineNo ?? '',
-                    'vehicleIdentificationNumber' => $ChassisNo ?? '',
+                    'engineNumber' => $EngineNo ?? '',  // "ENG7654321",
+                    'vehicleIdentificationNumber' => $ChassisNo ?? '',  // "MA3EYD32S00654321",
                     'registrationDate' => $firstregdate ?? '',
                     'manufactureDate' => $firstregdate ?? '',
-                    'vehicleMaincode' => $oModel,
+                    'vehicleMaincode' => $oModel,  // "1112610616",//"1112611155",//"1111610313",
                     'vehicleIDV' => [
                         'idv' => $idv ?? 0
                     ]
